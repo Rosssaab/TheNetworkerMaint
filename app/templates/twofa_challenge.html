@@ -1,0 +1,31 @@
+{% extends "admin_base.html" %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-5">
+    <div class="card soft-panel">
+      <div class="card-header d-flex align-items-center gap-2">
+        <span class="fs-5" aria-hidden="true">🔐</span>
+        <h1 class="section-title tnw-page-title mb-0">Two-factor authentication</h1>
+      </div>
+      <div class="card-body p-4">
+        <p class="text-muted">
+          Open your authenticator app and enter the 6-digit code to finish
+          signing in.
+        </p>
+        <form method="post">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Authenticator code</label>
+            <input type="text" class="form-control form-control-lg text-center font-monospace"
+                   name="code" inputmode="numeric" pattern="[0-9 ]*" maxlength="7"
+                   autocomplete="one-time-code" placeholder="123 456" required autofocus>
+          </div>
+          <div class="d-grid gap-2">
+            <button class="btn btn-primary" type="submit">Sign in</button>
+            <a class="btn btn-outline-secondary" href="{{ url_for('main.login') }}">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

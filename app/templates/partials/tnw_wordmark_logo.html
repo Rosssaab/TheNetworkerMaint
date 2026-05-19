@@ -1,0 +1,9 @@
+{# Raster logo (PNG). Root-relative src inherits the page scheme (HTTPS behind proxies) — avoids mixed-content when request.host_url is still http. #}
+<img
+  src="{{ url_for('static', filename='images/The-NetworkerLogo.png') }}"
+  {% if logo_decorative|default(false) %}alt=""{% else %}alt="{{ logo_alt|default('The Networker') }}"{% endif %}
+  class="{{ logo_class|default('site-logo') }}"
+  width="768"
+  height="183"
+  decoding="async"
+>

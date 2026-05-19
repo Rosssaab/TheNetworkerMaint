@@ -1,0 +1,25 @@
+<div class="modal fade" id="tnwSquareImageCropModal" tabindex="-1" aria-labelledby="tnwSquareImageCropTitle" aria-hidden="true" data-bs-backdrop="static">
+  <div class="modal-dialog modal-dialog-centered tnw-square-image-crop-dialog">
+    <div class="modal-content shadow tnw-modal-branded-shell">
+      {% with modal_title = 'Crop image', modal_title_id = 'tnwSquareImageCropTitle' %}
+        {% include "partials/tnw_modal_header_branded.html" %}
+      {% endwith %}
+      <div class="modal-body pt-3 pb-2">
+        <div id="tnwSquareCropViewport" class="tnw-square-crop-viewport ew-crop-viewport position-relative d-inline-block mx-auto text-center">
+          <img id="tnwSquareCropImg" alt="" class="rounded border bg-light d-block mx-auto" draggable="false" style="max-height: min(38vh, 300px); max-width: 100%; height: auto;">
+          <div id="tnwSquareCropFrame" class="tnw-square-crop-frame ew-crop-frame position-absolute">
+            <span id="tnwSquareCropResizeHandle" class="tnw-square-crop-handle ew-crop-handle d-block" aria-hidden="true"></span>
+          </div>
+        </div>
+        <div class="small text-muted mt-3 mb-0 text-center px-1">
+          <p class="mb-1">Drag the square or use the corner handle to resize the crop.</p>
+          <p class="mb-0" id="tnwSquareCropSizeHint">The saved image is always a <strong>300×300</strong> pixel square.</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="tnwSquareImageCropApply">Use cropped image</button>
+      </div>
+    </div>
+  </div>
+</div>

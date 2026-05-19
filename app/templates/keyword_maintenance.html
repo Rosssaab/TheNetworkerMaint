@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Keyword Maintenance - The Networker</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link href="{{ url_for('static', filename='css/site.css') }}" rel="stylesheet">
+  <style>
+    html, body {
+      min-height: 100vh;
+    }
+
+    body {
+      background:
+        radial-gradient(circle at top, rgba(255, 255, 255, 0.5), transparent 24%),
+        linear-gradient(180deg, #f2f4f7 0%, #e8ebf0 52%, #dde2e8 100%);
+    }
+  </style>
+</head>
+<body>
+<main class="container my-5 tnw-public-main">
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for category, message in messages %}
+    {% set header_class = 'bg-primary text-white' %}
+    <div class="modal fade flash-modal" id="flashModal{{ loop.index0 }}" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg tnw-modal-branded-shell">
+          {% if category == 'success' %}
+            {% set km_flash_title = 'Success' %}
+          {% elif category == 'danger' %}
+            {% set km_flash_title = 'Error' %}
+          {% elif category == 'warning' %}
+            {% set km_flash_title = 'Warning' %}
+          {% else %}
+            {% set km_flash_title = 'Information' %}
+          {% endif %}
+          {% with modal_title = km_flash_title %}
+            {% include "partials/tnw_modal_header_branded.html" %}
+          {% endwith %}
+          <div class="modal-body py-4">
+            <p class="fs-5 mb-0">{{ message }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+
+<div class="card soft-panel shadow-sm mb-4">
+  <div class="card-header d-flex align-items-center justify-content-between">
+    <div>
+      <span class="carousel-kicker">Direct link admin</span>
+      <h1 class="section-title tnw-page-title mb-0 mt-1">Topics and Keywords</h1>
+    </div>
+    <i class="bi bi-tags fs-2 opacity-75" aria-hidden="true"></i>
+  </div>
+  <div class="card-body p-4">
+    <p class="text-muted mb-4">
+      Maintain search topics and keywords quickly. Deletes are blocked when a record is already used by profiles or event groups.
+    </p>
+
+    {% set keywords_active = request.args.get('tab') == 'keywords' or (selected_topic_id and request.args.get('tab') != 'topics') %}
+    {% set keywords_tab_href = url_for('main.keyword_maintenance', tab='keywords', topic_id=selected_topic_id) if selected_topic_id else url_for('main.keyword_maintenance', tab='keywords') %}
+    <ul class="nav nav-tabs mb-4" id="keywordAdminTabs" role="tablist">
+      <li class="nav-item" role="presentation">
+        <a
+          class="nav-link {% if not keywords_active %}active{% endif %}"
+          id="topics-tab"
+          href="{{ url_for('main.keyword_maintenance', tab='topics') }}"
+          role="tab"
+          aria-controls="topics-pane"
+          aria-selected="{{ 'false' if keywords_active else 'true' }}"
+        >Topics</a>
+      </li>
+      <li class="nav-item" role="presentation">
+        <a
+          class="nav-link {% if keywords_active %}active{% endif %}"
+          id="keywords-tab"
+          href="{{ keywords_tab_href }}"
+          role="tab"
+          aria-controls="keywords-pane"
+          aria-selected="{{ 'true' if keywords_active else 'false' }}"
+        >Keywords</a>
+      </li>
+    </ul>
+
+    <div class="tab-content" id="keywordAdminTabContent">
+      <div
+        class="tab-pane fade {% if not keywords_active %}show active{% endif %}"
+        id="topics-pane"
+        role="tabpanel"
+        aria-labelledby="topics-tab"
+        tabindex="0"
+      >
+        <section class="meeting-create-field-panel">
+          <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+            <div>
+              <h2 class="h5 section-title mb-0">Topics</h2>
+              <p class="text-muted small mb-0">Add or rename topics used by the keyword grid.</p>
+            </div>
+            <span class="badge rounded-pill text-bg-light">{{ topics|length }} total</span>
+          </div>
+
+          <form class="row g-2 mb-3" method="post" action="{{ url_for('main.topic_add') }}">
+            <div class="col-md">
+              <label class="visually-hidden" for="newTopicName">New topic</label>
+              <input class="form-control" id="newTopicName" name="industry" maxlength="50" placeholder="Add topic">
+            </div>
+            <div class="col-md-auto">
+              <button class="btn btn-primary w-100" type="submit">
+                <i class="bi bi-plus-circle me-1"></i>Add topic
+              </button>
+            </div>
+          </form>
+
+          <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0 keyword-admin-grid" id="topicAdminGrid">
+              <thead>
+                <tr>
+                  <th><button type="button" class="btn btn-link btn-sm p-0 keyword-sort" data-sort-col="0">Topic <i class="bi bi-arrow-down-up ms-1"></i></button></th>
+                  <th><button type="button" class="btn btn-link btn-sm p-0 keyword-sort" data-sort-col="1">Keywords <i class="bi bi-arrow-down-up ms-1"></i></button></th>
+                  <th class="text-end">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for topic in topics %}
+                  {% set counts = topic_counts.get(topic.industry_id, {}) %}
+                  {% set ref_total = counts.values()|sum %}
+                  <tr>
+                    <td data-sort-value="{{ topic.industry|lower }}">
+                      <form id="topicUpdate{{ topic.industry_id }}" method="post" action="{{ url_for('main.topic_update') }}">
+                        <input type="hidden" name="industry_id" value="{{ topic.industry_id }}">
+                        <input class="form-control form-control-sm" name="industry" value="{{ topic.industry }}" maxlength="50">
+                      </form>
+                    </td>
+                    <td data-sort-value="{{ counts.get('keywords', 0) }}">{{ counts.get('keywords', 0) }}</td>
+                    <td>
+                      <div class="d-flex justify-content-end gap-2">
+                        <button class="btn btn-primary btn-sm" type="submit" form="topicUpdate{{ topic.industry_id }}">Save</button>
+                        <a class="btn btn-outline-primary btn-sm rounded-pill" href="{{ url_for('main.keyword_maintenance', topic_id=topic.industry_id, tab='keywords') }}">Filter</a>
+                        {% if not ref_total %}
+                        <form method="post" action="{{ url_for('main.topic_delete') }}">
+                          <input type="hidden" name="industry_id" value="{{ topic.industry_id }}">
+                          <button class="btn btn-outline-danger btn-sm rounded-pill" type="submit">
+                            <i class="bi bi-trash me-1"></i>Delete
+                          </button>
+                        </form>
+                        {% endif %}
+                      </div>
+                    </td>
+                  </tr>
+                {% else %}
+                  <tr>
+                    <td colspan="3" class="text-muted py-3">No topics yet.</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <div
+        class="tab-pane fade {% if keywords_active %}show active{% endif %}"
+        id="keywords-pane"
+        role="tabpanel"
+        aria-labelledby="keywords-tab"
+        tabindex="0"
+      >
+        <section class="meeting-create-field-panel mb-4">
+          <div class="row g-3 align-items-end">
+            <div class="col-md-5">
+              <form method="get" action="{{ url_for('main.keyword_maintenance') }}">
+                <input type="hidden" name="tab" value="keywords">
+                <label class="form-label fw-semibold" for="topicFilter">Filter keywords by topic</label>
+                <select class="form-select" id="topicFilter" name="topic_id" onchange="this.form.submit()">
+                  <option value="">All topics</option>
+                  {% for topic in topics %}
+                    <option value="{{ topic.industry_id }}" {% if selected_topic_id == topic.industry_id %}selected{% endif %}>{{ topic.industry }}</option>
+                  {% endfor %}
+                </select>
+              </form>
+            </div>
+            <div class="col-md">
+              <form class="row g-2 align-items-end" method="post" action="{{ url_for('main.keyword_add') }}">
+                <div class="col-md-5">
+                  <label class="form-label fw-semibold" for="newKeywordTopic">Topic</label>
+                  <select class="form-select" id="newKeywordTopic" name="industry_id" required>
+                    <option value="">Choose topic</option>
+                    {% for topic in topics %}
+                      <option value="{{ topic.industry_id }}" {% if selected_topic_id == topic.industry_id %}selected{% endif %}>{{ topic.industry }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="col-md">
+                  <label class="form-label fw-semibold" for="newKeywordName">Keyword</label>
+                  <input class="form-control" id="newKeywordName" name="tag" maxlength="50" placeholder="Add keyword">
+                </div>
+                <div class="col-md-auto">
+                  <button class="btn btn-primary w-100" type="submit">
+                    <i class="bi bi-plus-circle me-1"></i>Add
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </section>
+
+        <section class="meeting-create-field-panel">
+          <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+            <div>
+              <h2 class="h5 section-title mb-0">Keyword Data Grid</h2>
+              <p class="text-muted small mb-0">Click a column heading to sort. Edit directly in the row, then Save.</p>
+            </div>
+            <span class="badge rounded-pill text-bg-light">{{ keywords|length }} shown</span>
+          </div>
+
+          <div class="table-responsive keyword-admin-table-wrap">
+            <table class="table table-sm align-middle mb-0 keyword-admin-grid" id="keywordAdminGrid">
+              <thead>
+                <tr>
+                  <th><button type="button" class="btn btn-link btn-sm p-0 keyword-sort" data-sort-col="0">Keyword <i class="bi bi-arrow-down-up ms-1"></i></button></th>
+                  <th><button type="button" class="btn btn-link btn-sm p-0 keyword-sort" data-sort-col="1">Topic <i class="bi bi-arrow-down-up ms-1"></i></button></th>
+                  <th class="text-end">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for keyword in keywords %}
+                  {% set counts = keyword_counts.get(keyword.tag_id, {}) %}
+                  {% set ref_total = counts.values()|sum %}
+                  <tr>
+                    <td data-sort-value="{{ keyword.tag|lower }}">
+                      <form id="keywordUpdate{{ keyword.tag_id }}" method="post" action="{{ url_for('main.keyword_update') }}">
+                        <input type="hidden" name="tag_id" value="{{ keyword.tag_id }}">
+                        <input class="form-control form-control-sm" name="tag" value="{{ keyword.tag }}" maxlength="50">
+                      </form>
+                    </td>
+                    <td data-sort-value="{{ keyword.industry.industry|lower if keyword.industry else '' }}">
+                      <select class="form-select form-select-sm" name="industry_id" form="keywordUpdate{{ keyword.tag_id }}">
+                        {% for topic in topics %}
+                          <option value="{{ topic.industry_id }}" {% if keyword.industry_id == topic.industry_id %}selected{% endif %}>{{ topic.industry }}</option>
+                        {% endfor %}
+                      </select>
+                    </td>
+                    <td>
+                      <div class="d-flex justify-content-end gap-2">
+                        <button class="btn btn-primary btn-sm" type="submit" form="keywordUpdate{{ keyword.tag_id }}">Save</button>
+                        {% if not ref_total %}
+                        <form method="post" action="{{ url_for('main.keyword_delete') }}">
+                          <input type="hidden" name="tag_id" value="{{ keyword.tag_id }}">
+                          <button class="btn btn-outline-danger btn-sm rounded-pill" type="submit">
+                            <i class="bi bi-trash me-1"></i>Delete
+                          </button>
+                        </form>
+                        {% endif %}
+                      </div>
+                    </td>
+                  </tr>
+                {% else %}
+                  <tr>
+                    <td colspan="3" class="text-muted py-3">No keywords found for this filter.</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    var flashModalEls = Array.from(document.querySelectorAll(".flash-modal"));
+    if (flashModalEls.length && window.bootstrap && window.bootstrap.Modal) {
+      function showFlashModalAt(index) {
+        if (index >= flashModalEls.length) return;
+        var modalEl = flashModalEls[index];
+        var modal = window.bootstrap.Modal.getOrCreateInstance(modalEl);
+        var hideTimer = null;
+
+        modalEl.addEventListener("hidden.bs.modal", function () {
+          if (hideTimer) clearTimeout(hideTimer);
+          showFlashModalAt(index + 1);
+        }, { once: true });
+
+        modalEl.addEventListener("shown.bs.modal", function () {
+          hideTimer = setTimeout(function () {
+            modal.hide();
+          }, 2600);
+        }, { once: true });
+
+        modal.show();
+      }
+
+      showFlashModalAt(0);
+    }
+
+    document.querySelectorAll(".keyword-admin-grid").forEach(function (table) {
+      var directions = {};
+      table.querySelectorAll(".keyword-sort").forEach(function (button) {
+        button.addEventListener("click", function () {
+          var col = parseInt(button.getAttribute("data-sort-col") || "0", 10);
+          var tbody = table.querySelector("tbody");
+          if (!tbody) return;
+          var rows = Array.from(tbody.querySelectorAll("tr")).filter(function (row) {
+            return row.children.length > col && !row.querySelector("td[colspan]");
+          });
+          directions[col] = directions[col] === "asc" ? "desc" : "asc";
+          var dir = directions[col];
+          rows.sort(function (a, b) {
+            var aVal = (a.children[col].getAttribute("data-sort-value") || a.children[col].textContent || "").trim();
+            var bVal = (b.children[col].getAttribute("data-sort-value") || b.children[col].textContent || "").trim();
+            var aNum = Number(aVal);
+            var bNum = Number(bVal);
+            var result = Number.isFinite(aNum) && Number.isFinite(bNum)
+              ? aNum - bNum
+              : aVal.localeCompare(bVal, undefined, { sensitivity: "base" });
+            return dir === "asc" ? result : -result;
+          });
+          rows.forEach(function (row) { tbody.appendChild(row); });
+        });
+      });
+    });
+  });
+</script>
+</main>
+</body>
+</html>

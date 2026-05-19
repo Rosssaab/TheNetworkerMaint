@@ -1,0 +1,133 @@
+{% extends "admin_base.html" %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-6">
+    <div class="card soft-panel">
+      <div class="card-header">
+        <h1 class="section-title tnw-page-title mb-0">Sign in</h1>
+      </div>
+      <div class="card-body p-4">
+        {% with
+          form_id='tnwLoginForm',
+          password_input_id='loginPassword',
+          toggle_btn_id='toggleLoginPassword',
+          login_next=login_next
+        %}
+          {% include "partials/tnw_sign_in_form.html" %}
+        {% endwith %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade tnw-loading-modal" id="loginSigningInModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg">
+      {% include "partials/tnw_modal_header_branded.html" %}
+      <div class="modal-body text-center tnw-loading-modal-body py-4 px-4 border-0">
+        <div class="spinner-border tnw-loading-modal-spinner mb-3" role="status" aria-label="Loading">
+          <span class="visually-hidden">Loading</span>
+        </div>
+        <p class="mb-0 fw-semibold tnw-loading-modal-title">Logging you into your account…</p>
+        <p class="small tnw-loading-modal-sub mt-2 mb-0">This may take a few seconds.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if unverified_popup %}
+<div class="modal fade" id="unverifiedModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg tnw-modal-branded-shell">
+      {% with modal_title = 'Verification Required' %}
+        {% include "partials/tnw_modal_header_branded.html" %}
+      {% endwith %}
+      <div class="modal-body">
+        <p class="mb-3" id="verificationWaitMessage" data-remaining-seconds="{{ unverified_popup.remaining_seconds or 0 }}">{{ unverified_popup.message }}</p>
+        {% if unverified_popup.can_resend %}
+        <form method="post" action="{{ url_for('main.resend_verification') }}" class="d-grid gap-2" id="resendVerificationForm">
+          <input type="hidden" name="email" value="{{ unverified_popup.email }}">
+          <button class="btn btn-primary" type="submit">Resend Verification Email</button>
+        </form>
+        {% else %}
+        <p class="small text-muted mb-0" id="verificationHint">Please check your inbox and spam folder, then try again shortly.</p>
+        <form method="post" action="{{ url_for('main.resend_verification') }}" class="d-grid gap-2 mt-3 d-none" id="resendVerificationForm">
+          <input type="hidden" name="email" value="{{ unverified_popup.email }}">
+          <button class="btn btn-primary" type="submit">Resend Verification Email</button>
+        </form>
+        {% endif %}
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+<script>
+  (function () {
+    document.addEventListener("DOMContentLoaded", function () {
+      const passwordInput = document.getElementById("loginPassword");
+      const toggleBtn = document.getElementById("toggleLoginPassword");
+      if (passwordInput && toggleBtn) {
+        toggleBtn.addEventListener("click", function () {
+          const show = passwordInput.type === "password";
+          passwordInput.type = show ? "text" : "password";
+          toggleBtn.textContent = show ? "🙈" : "👁";
+        });
+      }
+
+      const loginForm = document.getElementById("tnwLoginForm");
+      const signingInModalEl = document.getElementById("loginSigningInModal");
+      if (loginForm && signingInModalEl && window.bootstrap && window.bootstrap.Modal) {
+        loginForm.addEventListener("submit", function () {
+          window.bootstrap.Modal.getOrCreateInstance(signingInModalEl, {
+            backdrop: "static",
+            keyboard: false,
+          }).show();
+        });
+      }
+
+      const unverifiedModalEl = document.getElementById("unverifiedModal");
+      if (!unverifiedModalEl) return;
+      const waitMessageEl = document.getElementById("verificationWaitMessage");
+      const resendFormEl = document.getElementById("resendVerificationForm");
+      const verificationHintEl = document.getElementById("verificationHint");
+
+      function formatWaitTime(totalSeconds) {
+        const safeSeconds = Math.max(parseInt(totalSeconds || 0, 10), 0);
+        const minutes = Math.floor(safeSeconds / 60);
+        const seconds = safeSeconds % 60;
+        const parts = [];
+        if (minutes > 0) parts.push(minutes + " minute" + (minutes === 1 ? "" : "s"));
+        if (seconds > 0) parts.push(seconds + " second" + (seconds === 1 ? "" : "s"));
+        return parts.length ? parts.join(" ") : "a few seconds";
+      }
+
+      let remainingSeconds = waitMessageEl ? parseInt(waitMessageEl.dataset.remainingSeconds || "0", 10) : 0;
+      if (waitMessageEl && remainingSeconds > 0) {
+        const timerId = setInterval(function () {
+          remainingSeconds -= 1;
+          if (remainingSeconds <= 0) {
+            clearInterval(timerId);
+            waitMessageEl.textContent = "Your account is not verified yet. You can resend the verification email now.";
+            if (resendFormEl) resendFormEl.classList.remove("d-none");
+            if (verificationHintEl) verificationHintEl.classList.add("d-none");
+            return;
+          }
+          waitMessageEl.textContent =
+            "Your account is not verified yet. We sent a verification email recently. Please try again in " +
+            formatWaitTime(remainingSeconds) +
+            " in case email delivery is slow.";
+        }, 1000);
+      }
+
+      setTimeout(function () {
+        if (window.bootstrap && window.bootstrap.Modal) {
+          window.bootstrap.Modal.getOrCreateInstance(unverifiedModalEl, { backdrop: "static" }).show();
+        }
+      }, 0);
+    });
+  })();
+</script>
+{% endblock %}

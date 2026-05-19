@@ -1,0 +1,43 @@
+#tnwSquareImageCropModal .tnw-square-image-crop-dialog {
+  max-width: min(420px, 94vw);
+}
+
+.tnw-square-crop-viewport,
+.ew-crop-viewport {
+  max-width: 100%;
+  isolation: isolate;
+}
+
+#tnwSquareCropImg,
+#ewCropImg {
+  position: relative;
+  z-index: 1;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.tnw-square-crop-frame,
+.ew-crop-frame {
+  position: absolute;
+  box-sizing: border-box;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.55), 0 2px 12px rgba(0, 0, 0, 0.35);
+  cursor: move;
+  touch-action: none;
+  z-index: 4;
+}
+
+.tnw-square-crop-handle,
+.ew-crop-handle {
+  position: absolute;
+  right: -8px;
+  bottom: -8px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid rgba(33, 37, 41, 0.8);
+  cursor: nwse-resize;
+  touch-action: none;
+  z-index: 3;
+}

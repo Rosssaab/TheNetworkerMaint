@@ -1,0 +1,44 @@
+{# Sign-in fields for full page or modal. Pass form_id, password_input_id, toggle_btn_id, login_next. #}
+{% set _form_id = form_id|default('tnwSignInForm') %}
+{% set _pw_id = password_input_id|default('tnwSignInPassword') %}
+{% set _toggle_id = toggle_btn_id|default('tnwSignInTogglePassword') %}
+<form method="post" action="{{ url_for('main.login') }}" id="{{ _form_id }}" class="tnw-sign-in-form">
+  <input type="hidden" name="next" id="{{ _form_id }}Next" value="{{ login_next or '' }}">
+  {% if sign_in_intro %}
+  <p class="text-muted small mb-3" id="{{ _form_id }}Intro">{{ sign_in_intro }}</p>
+  {% endif %}
+  <div class="mb-3">
+    <label class="form-label" for="{{ _form_id }}Email">Email</label>
+    <input
+      type="email"
+      class="form-control"
+      name="email"
+      id="{{ _form_id }}Email"
+      value="{{ request.form.get('email', '') }}"
+      required
+      autocomplete="email"
+    >
+  </div>
+  <div class="mb-2">
+    <label class="form-label" for="{{ _pw_id }}">Password</label>
+    <div class="input-group">
+      <input
+        type="password"
+        class="form-control"
+        id="{{ _pw_id }}"
+        name="password"
+        required
+        autocomplete="current-password"
+      >
+      <button class="btn btn-outline-secondary" type="button" id="{{ _toggle_id }}" aria-label="Show password">👁</button>
+    </div>
+  </div>
+  <div class="d-flex justify-content-end mb-3">
+    <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('main.forgot_password') }}">Forgot password</a>
+  </div>
+  <button class="btn btn-primary w-100" type="submit">Sign In</button>
+</form>
+<div class="text-center mt-3">
+  <span class="small text-muted me-2">New here?</span>
+  <button type="button" class="btn btn-outline-primary btn-sm" data-tnw-register-modal data-tnw-auth-switch="register">Register</button>
+</div>
