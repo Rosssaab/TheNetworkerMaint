@@ -1,0 +1,55 @@
+      <div class="admin-console-panel">
+        <div class="d-flex flex-wrap align-items-start justify-content-between gap-2 mb-2">
+          <h2 class="h5 mb-0">Keywords</h2>
+          {% if not impersonating %}
+          <div class="d-flex flex-wrap align-items-center justify-content-end gap-2 flex-shrink-0">
+            <a
+              class="btn btn-sm btn-outline-success"
+              href="{{ url_for('main.keyword_maintenance', tab='keywords') }}"
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Open keyword maintenance"
+            ><i class="bi bi-plus-circle me-1" aria-hidden="true"></i>Add keyword</a>
+            <button type="button" class="btn btn-sm btn-outline-primary" id="adminKwSuggestBtn" aria-haspopup="dialog">
+              <span class="admin-kw-suggest-label">Suggest</span>
+              <span class="spinner-border spinner-border-sm d-none ms-1" id="adminKwSuggestSpinner" role="status" aria-hidden="true"></span>
+            </button>
+          </div>
+          {% endif %}
+        </div>
+        <p class="admin-console-footer-note mb-3">
+          Choose one or more {{ lbl_ind | lower }} (topics) to browse which keywords exist under each topic.
+          This filter only changes the list below; each event group has its own topic on the Event groups tab, and keywords on that group must belong to that topic.
+          Changing a group’s topic in the dashboard editor automatically removes keywords from other topics.
+        </p>
+        {% if admin_kw_topics %}
+        <fieldset class="border-0 p-0 mb-4">
+          <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+            <legend class="form-label fw-semibold mb-0">{{ lbl_ind }}</legend>
+            <div class="btn-group btn-group-sm flex-shrink-0" role="group" aria-label="Select all topics">
+              <button type="button" class="btn btn-sm {% if tnw_admin_bootstrap_light_shell %}btn-outline-secondary{% else %}btn-outline-light{% endif %}" id="adminKwTopicSelectAll">Select all</button>
+              <button type="button" class="btn btn-sm {% if tnw_admin_bootstrap_light_shell %}btn-outline-secondary{% else %}btn-outline-light{% endif %}" id="adminKwTopicClearAll">Clear all</button>
+            </div>
+          </div>
+          <div class="d-flex flex-wrap gap-3 gap-md-4 align-items-center admin-kw-topic-picks">
+            {% for topic in admin_kw_topics %}
+            <div class="form-check m-0">
+              <input
+                class="form-check-input js-admin-kw-topic"
+                type="checkbox"
+                value="{{ topic.industry_id }}"
+                id="adminKwTopic{{ topic.industry_id }}"
+              >
+              <label class="form-check-label" for="adminKwTopic{{ topic.industry_id }}">{{ topic.industry }}</label>
+            </div>
+            {% endfor %}
+          </div>
+        </fieldset>
+        <div class="admin-kw-tags-wrap">
+          <h3 class="h6 text-uppercase admin-console-footer-note mb-2" style="letter-spacing: 0.07em;">Keywords</h3>
+          <div id="adminKwTagsOutput" class="admin-kw-tags-output" role="region" aria-live="polite"></div>
+        </div>
+        {% else %}
+        <p class="admin-console-footer-note mb-0">No topics are defined yet. Add industries (topics) and tags before they appear here.</p>
+        {% endif %}
+      </div>

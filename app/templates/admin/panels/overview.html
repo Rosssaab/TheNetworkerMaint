@@ -1,0 +1,277 @@
+      <div class="admin-console-panel mb-3">
+        <div class="d-flex flex-wrap align-items-center column-gap-3 row-gap-2 mb-2 mb-md-3">
+          <h2 class="h6 text-uppercase admin-console-footer-note mb-0">Filter {{ lbl_mg | lower }}</h2>
+          <input type="hidden" form="adminOvFilterForm" name="ignore_test_users" id="adminOvIgnoreTestHidden" value="{{ '0' if request.args.get('ignore_test_users') == '0' else '1' }}">
+          <div class="form-check mb-0">
+            <input type="checkbox" class="form-check-input" id="adminOvIgnoreTestCb" {% if request.args.get('ignore_test_users') != '0' %}checked{% endif %}>
+            <label class="form-check-label small text-nowrap" for="adminOvIgnoreTestCb">Ignore test users</label>
+          </div>
+        </div>
+        <div class="d-flex flex-wrap align-items-end gap-2 gap-lg-3">
+          <form id="adminOvFilterForm" class="d-flex flex-wrap align-items-end gap-2 gap-md-3 flex-grow-1 min-w-0" method="get" action="{{ url_for('main.admin_events') }}">
+            <input type="hidden" name="sort" value="{{ admin_sort_key }}">
+            <input type="hidden" name="dir" value="{{ admin_sort_dir }}">
+            <div class="d-flex flex-column" style="min-width: 9rem; width: 12rem; max-width: 100%;">
+              <label class="form-label mb-0" for="ovGroupQ">Name contains</label>
+              <input class="form-control form-control-sm" id="ovGroupQ" name="group_q" value="{{ request.args.get('group_q', '') }}" autocomplete="off">
+            </div>
+            <div class="d-flex flex-column" style="min-width: 9rem; width: 14rem; max-width: 100%;">
+              <label class="form-label mb-0" for="ovEmailQ">Owner email contains</label>
+              <input class="form-control form-control-sm" id="ovEmailQ" name="email_q" value="{{ request.args.get('email_q', '') }}" autocomplete="off">
+            </div>
+            <div class="d-flex flex-wrap align-items-center gap-2 pb-1">
+              <button type="submit" class="btn btn-primary btn-sm">Apply filters</button>
+              <a class="btn btn-primary btn-sm js-admin-ov-grid-reload" href="{{ url_for('main.admin_events') }}">Clear</a>
+              <button
+                type="button"
+                class="btn btn-sm btn-info text-dark text-nowrap"
+                id="adminMgBulkKwSuggestBtn"
+                title="Run AI on each selected event group’s title and description to suggest existing topic keywords to add"
+              >
+                <i class="bi bi-magic me-1" aria-hidden="true"></i>AI keywords (selected)
+              </button>
+            </div>
+          </form>
+          <div id="adminBulkToolbarActions" class="flex-wrap align-items-center gap-2 pb-1 ms-lg-auto flex-shrink-0 d-none" aria-hidden="true">
+            <button type="button" class="btn btn-primary btn-sm" id="adminBulkDeleteOpen">Delete selected</button>
+            <button type="button" class="btn btn-primary btn-sm" id="adminBulkTransferOpen">Change ownership</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="adminOverviewGridWrap" data-meeting-plural="{{ lbl_mt|e }}">
+        <div id="adminOverviewGridLoading" class="admin-overview-grid-loading" aria-hidden="true">
+          <div class="spinner-border text-primary" role="status" style="width: 2.5rem; height: 2.5rem;">
+            <span class="visually-hidden">Loading…</span>
+          </div>
+        </div>
+        <div class="admin-console-surface admin-console-surface--overview-grid admin-overview-table-theme">
+          <div class="px-3 py-2 border-bottom border-secondary border-opacity-25 d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <span class="small text-uppercase fw-semibold" style="color: var(--ac-muted); letter-spacing: 0.06em;">{{ lbl_mg }}</span>
+            <span class="small admin-console-footer-note">
+              Showing {{ admin_overview_rows|length }} of {{ admin_ov_total }} (page {{ admin_ov_page }} / {{ admin_ov_pages }}, {{ admin_ov_per_page }} per page)
+            </span>
+          </div>
+          <div class="admin-overview-grid-scroll border-top border-secondary border-opacity-25">
+            <div class="table-responsive">
+            <table class="table table-sm admin-console-table admin-console-table--dense admin-overview-data-grid align-middle">
+              <thead>
+                <tr>
+                  <th scope="col"><a href="{{ admin_sort_urls.group_id }}" class="link-offset-2">ID{% if admin_sort_key == 'group_id' %} <i class="bi bi-arrow-{{ 'up' if admin_sort_dir == 'asc' else 'down' }}" aria-hidden="true"></i>{% endif %}</a></th>
+                  <th scope="col"><a href="{{ admin_sort_urls.group_name }}" class="link-offset-2">Name{% if admin_sort_key == 'group_name' %} <i class="bi bi-arrow-{{ 'up' if admin_sort_dir == 'asc' else 'down' }}" aria-hidden="true"></i>{% endif %}</a></th>
+                  <th scope="col"><a href="{{ admin_sort_urls.owner_email }}" class="link-offset-2">Owner email{% if admin_sort_key == 'owner_email' %} <i class="bi bi-arrow-{{ 'up' if admin_sort_dir == 'asc' else 'down' }}" aria-hidden="true"></i>{% endif %}</a></th>
+                  <th scope="col" class="text-end"><a href="{{ admin_sort_urls.events }}" class="link-offset-2">Meetings{% if admin_sort_key == 'events' %} <i class="bi bi-arrow-{{ 'up' if admin_sort_dir == 'asc' else 'down' }}" aria-hidden="true"></i>{% endif %}</a></th>
+                  <th scope="col" class="text-end"><a href="{{ admin_sort_urls.live }}" class="link-offset-2">Live{% if admin_sort_key == 'live' %} <i class="bi bi-arrow-{{ 'up' if admin_sort_dir == 'asc' else 'down' }}" aria-hidden="true"></i>{% endif %}</a></th>
+                  <th scope="col" class="text-end"><a href="{{ admin_sort_urls.draft }}" class="link-offset-2">Draft{% if admin_sort_key == 'draft' %} <i class="bi bi-arrow-{{ 'up' if admin_sort_dir == 'asc' else 'down' }}" aria-hidden="true"></i>{% endif %}</a></th>
+                  <th scope="col">Summary</th>
+                  <th scope="col"><a href="{{ admin_sort_urls.created }}" class="link-offset-2">Created{% if admin_sort_key == 'created' %} <i class="bi bi-arrow-{{ 'up' if admin_sort_dir == 'asc' else 'down' }}" aria-hidden="true"></i>{% endif %}</a></th>
+                  <th scope="col" class="text-end admin-mg-actions-col admin-overview-actions-th">
+                    <div class="admin-mg-actions-head-grid">
+                      <span aria-hidden="true" class="d-inline-block" style="width:2.25rem;"></span>
+                      <span aria-hidden="true" class="d-inline-block" style="width:2.25rem;"></span>
+                      <span aria-hidden="true" class="d-inline-block" style="width:2.25rem;"></span>
+                      <span aria-hidden="true" class="d-inline-block" style="width:2.25rem;"></span>
+                      <div class="d-flex justify-content-end align-items-center">
+                        <span class="visually-hidden" id="adminBulkSelectAllLabel">Select all on this page</span>
+                        <input
+                          type="checkbox"
+                          class="form-check-input m-0 flex-shrink-0"
+                          id="adminBulkSelectAll"
+                          title="Select all on this page"
+                          aria-labelledby="adminBulkSelectAllLabel"
+                        >
+                      </div>
+                    </div>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for row in admin_overview_rows %}
+                  {% set mg = row.group %}
+                  {% set owner = mg.owner if mg else none %}
+                  {% set t = row.total %}
+                  {% set lv = row.live %}
+                  {% set dr = row.draft %}
+                  <tr class="admin-mg-overview-row">
+                    <td class="text-secondary small">{{ mg.meeting_group_id }}</td>
+                    <td class="fw-medium">{{ mg.meeting_group_name }}</td>
+                    <td class="small text-secondary">{{ owner.email if owner else '—' }}</td>
+                    <td class="small text-end">{{ t }}</td>
+                    <td class="small text-end">{{ lv }}</td>
+                    <td class="small text-end">{{ dr }}</td>
+                    <td class="small">
+                      {% if t == 0 %}
+                        <span class="badge rounded-pill bg-secondary bg-opacity-25 border border-secondary border-opacity-50">No meetings</span>
+                      {% elif lv == t and t > 0 %}
+                        <span class="badge rounded-pill admin-console-badge-live">All live</span>
+                      {% elif dr == t and t > 0 %}
+                        <span class="badge rounded-pill admin-console-badge-draft">All draft</span>
+                      {% elif lv > 0 and dr > 0 %}
+                        <span class="badge rounded-pill bg-secondary bg-opacity-25 border border-secondary border-opacity-50">Live + draft</span>
+                      {% elif lv > 0 %}
+                        <span class="badge rounded-pill admin-console-badge-live">Has live</span>
+                      {% elif dr > 0 %}
+                        <span class="badge rounded-pill admin-console-badge-draft">Draft only</span>
+                      {% else %}
+                        <span class="badge rounded-pill bg-secondary bg-opacity-25 border border-secondary border-opacity-50">Other</span>
+                      {% endif %}
+                    </td>
+                    <td class="small text-secondary text-nowrap">{{ mg.created_at.strftime('%Y-%m-%d') if mg.created_at else '—' }}</td>
+                    <td class="small text-end admin-mg-actions-cell">
+                      {% if not impersonating %}
+                      <div class="admin-mg-actions-head-grid">
+                        <span class="admin-mg-view-hover d-inline-flex justify-content-center">
+                          <button
+                            type="button"
+                            class="btn btn-outline-secondary btn-sm px-2 py-0"
+                            aria-label="Preview image for {{ mg.meeting_group_name | e }}"
+                          ><i class="bi bi-eye" aria-hidden="true"></i></button>
+                          <span class="admin-mg-view-hovercard" role="tooltip">
+                            <span class="admin-mg-view-hovercard-title">{{ mg.meeting_group_name }}</span>
+                            <img
+                              class="admin-mg-view-hovercard-img"
+                              src="{{ meeting_group_image_url(mg) }}"
+                              alt=""
+                              width="220"
+                              height="120"
+                              loading="lazy"
+                            >
+                          </span>
+                        </span>
+                        <div class="d-flex justify-content-center">
+                          <button
+                            type="button"
+                            class="btn btn-outline-success btn-sm px-2 py-0 js-admin-mg-desc-open"
+                            title="View / edit description"
+                            aria-label="View or edit description for {{ mg.meeting_group_name | e }}"
+                            data-meeting-group-id="{{ mg.meeting_group_id }}"
+                            data-desc-url="{{ url_for('main.admin_meeting_group_description', meeting_group_id=mg.meeting_group_id) }}"
+                          ><i class="bi bi-card-text" aria-hidden="true"></i></button>
+                        </div>
+                        <div class="d-flex justify-content-center">
+                          <button
+                            type="button"
+                            class="btn btn-outline-primary btn-sm px-2 py-0 js-admin-mg-img-replace-open"
+                            title="Replace event image"
+                            aria-label="Replace image for {{ mg.meeting_group_name | e }}"
+                            data-mg-id="{{ mg.meeting_group_id }}"
+                            data-mg-name="{{ (mg.meeting_group_name or '')|decode_html_entities|e }}"
+                            data-mg-email="{{ (owner.email if owner else '')|e }}"
+                            data-mg-filename="{{ (mg.image_filename or '')|e }}"
+                            data-mg-src="{{ meeting_group_image_url(mg) }}"
+                          ><i class="bi bi-image" aria-hidden="true"></i></button>
+                        </div>
+                        <div class="d-flex justify-content-center">
+                          <button
+                            type="button"
+                            class="btn btn-outline-danger btn-sm px-2 py-0 js-admin-row-delete-open"
+                            title="Delete this event group"
+                            aria-label="Delete {{ mg.meeting_group_name | e }}"
+                            data-group-id="{{ mg.meeting_group_id }}"
+                            data-group-name="{{ mg.meeting_group_name | e }}"
+                            data-meetings-total="{{ t }}"
+                            data-meetings-live="{{ lv }}"
+                            data-meetings-draft="{{ dr }}"
+                          ><i class="bi bi-trash3" aria-hidden="true"></i></button>
+                        </div>
+                        <div class="d-flex justify-content-center">
+                          <button
+                            type="button"
+                            class="btn btn-outline-info btn-sm px-2 py-0 js-admin-mg-row-kw-suggest"
+                            title="{% if mg.industry_id %}Suggest keywords from description (AI){% else %}Set a topic on this group before suggesting keywords{% endif %}"
+                            aria-label="AI keyword suggestions for {{ mg.meeting_group_name | e }}"
+                            data-meeting-group-id="{{ mg.meeting_group_id }}"
+                            data-group-name="{{ mg.meeting_group_name | e }}"
+                            {% if not mg.industry_id %}disabled aria-disabled="true"{% endif %}
+                          ><i class="bi bi-magic" aria-hidden="true"></i></button>
+                        </div>
+                        <div class="d-flex justify-content-center">
+                          <a
+                            class="btn btn-outline-warning btn-sm px-2 py-0"
+                            title="Delete all events in this group (keep group)"
+                            aria-label="Delete all events in {{ mg.meeting_group_name | e }} and keep the group"
+                            href="{{ url_for('main.admin_delete_group_events', del_group_id=mg.meeting_group_id) }}"
+                          ><i class="bi bi-calendar-x" aria-hidden="true"></i></a>
+                        </div>
+                        <div class="d-flex justify-content-end align-items-center">
+                          <label class="admin-mg-select-tick mb-0" title="Select row">
+                            <input
+                              type="checkbox"
+                              class="admin-mg-select-cb admin-bulk-row-cb"
+                              value="{{ mg.meeting_group_id }}"
+                              data-group-name="{{ mg.meeting_group_name | e }}"
+                              aria-label="Select {{ mg.meeting_group_name | e }}"
+                            >
+                            <span class="admin-mg-select-ui" aria-hidden="true"></span>
+                          </label>
+                        </div>
+                      </div>
+                      {% else %}
+                      <span class="small text-secondary">—</span>
+                      {% endif %}
+                    </td>
+                  </tr>
+                {% else %}
+                  <tr>
+                    <td colspan="9" class="text-center py-4 admin-console-footer-note">No {{ lbl_mg | lower }} match the current filters.</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+            </div>
+          </div>
+          {% if admin_ov_pagination.pages > 1 %}
+          <nav class="px-3 py-2 border-top border-secondary border-opacity-25" aria-label="{{ lbl_mg }} pagination">
+            <ul class="pagination pagination-sm mb-0 flex-wrap">
+              {% if admin_ov_pagination.has_prev %}
+              <li class="page-item">
+                <a class="page-link" href="{{ url_for('main.admin_events', admin_ov_page=admin_ov_pagination.prev_num, **admin_overview_nav_kwargs) }}">Previous</a>
+              </li>
+              {% endif %}
+              {% for p in admin_ov_pagination.iter_pages() %}
+                {% if p %}
+                  <li class="page-item{% if p == admin_ov_page %} active{% endif %}">
+                    <a class="page-link" href="{{ url_for('main.admin_events', admin_ov_page=p, **admin_overview_nav_kwargs) }}">{{ p }}</a>
+                  </li>
+                {% else %}
+                  <li class="page-item disabled"><span class="page-link">…</span></li>
+                {% endif %}
+              {% endfor %}
+              {% if admin_ov_pagination.has_next %}
+              <li class="page-item">
+                <a class="page-link" href="{{ url_for('main.admin_events', admin_ov_page=admin_ov_pagination.next_num, **admin_overview_nav_kwargs) }}">Next</a>
+              </li>
+              {% endif %}
+            </ul>
+          </nav>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+  <div class="modal fade" id="adminMgDescModal" tabindex="-1" aria-labelledby="adminMgDescModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content tnw-modal-branded-shell {% if tnw_admin_bootstrap_light_shell %}bg-light text-dark border{% else %}bg-dark text-light border border-secondary{% endif %}">
+        {% with modal_title = 'Event group description', modal_title_id = 'adminMgDescModalLabel', use_h2_title = true %}
+          {% include "partials/tnw_modal_header_branded.html" %}
+        {% endwith %}
+        <div class="modal-body">
+          <p class="small text-secondary mb-2">
+            <span class="fw-semibold" id="adminMgDescGroupName"></span>
+            <span class="ms-2">ID <span id="adminMgDescGroupId"></span></span>
+            <span class="ms-2" id="adminMgDescOwnerEmail"></span>
+          </p>
+          <label class="form-label small fw-semibold" for="adminMgDescTextarea">Description</label>
+          <textarea class="form-control" id="adminMgDescTextarea" rows="8" maxlength="20000" placeholder="No description yet."></textarea>
+          <p class="small admin-console-footer-note mt-2 mb-0" id="adminMgDescHint"></p>
+        </div>
+        <div class="modal-footer {% if tnw_admin_bootstrap_light_shell %}border-secondary border-opacity-25{% else %}border-secondary{% endif %} gap-2">
+          <button type="button" class="btn {% if tnw_admin_bootstrap_light_shell %}btn-outline-secondary{% else %}btn-outline-light{% endif %}" data-bs-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-success" id="adminMgDescSaveBtn">
+            <span>Save</span>
+            <span class="spinner-border spinner-border-sm d-none ms-2" id="adminMgDescSaveSpin" role="status" aria-hidden="true"></span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>

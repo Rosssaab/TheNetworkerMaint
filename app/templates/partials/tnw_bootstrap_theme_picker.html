@@ -1,0 +1,25 @@
+{# Bootstrap / Bootswatch theme picker (auto-submit on change). #}
+<form
+  method="post"
+  action="{{ theme_form_action }}"
+  class="d-flex flex-column flex-sm-row align-items-stretch align-items-sm-center gap-1 gap-sm-2 mb-0"
+>
+  <input type="hidden" name="return_to" value="{{ theme_return_to|default(request.path, true) }}">
+  <label
+    for="{{ theme_select_id|default('tnwBootstrapThemeSelect') }}"
+    class="small mb-0 text-nowrap {% if theme_on_dark_header %}text-white-50{% elif theme_label_muted %}text-secondary{% endif %}"
+  >{{ theme_label|default('Theme') }}</label>
+  <select
+    id="{{ theme_select_id|default('tnwBootstrapThemeSelect') }}"
+    name="theme"
+    class="form-select form-select-sm"
+    style="max-width: 13rem;"
+    autocomplete="off"
+    aria-label="Bootstrap theme"
+    onchange="this.form.submit()"
+  >
+    {% for row in tnw_bootstrap_theme_choices %}
+      <option value="{{ row.id }}" {% if row.id == tnw_bootstrap_theme %}selected{% endif %}>{{ row.label }}</option>
+    {% endfor %}
+  </select>
+</form>

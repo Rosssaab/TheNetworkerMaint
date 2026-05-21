@@ -1,30 +1,11 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Keyword Maintenance - The Networker</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-  <link href="{{ url_for('static', filename='css/site.css') }}" rel="stylesheet">
-  <style>
-    html, body {
-      min-height: 100vh;
-    }
+{% extends "base.html" %}
 
-    body {
-      background:
-        radial-gradient(circle at top, rgba(255, 255, 255, 0.5), transparent 24%),
-        linear-gradient(180deg, #f2f4f7 0%, #e8ebf0 52%, #dde2e8 100%);
-    }
-  </style>
-</head>
-<body>
-<main class="container my-5 tnw-public-main">
+{% block title %}Keyword Maintenance - The Networker{% endblock %}
+
+{% block content %}
 {% with messages = get_flashed_messages(with_categories=true) %}
   {% if messages %}
     {% for category, message in messages %}
-    {% set header_class = 'bg-primary text-white' %}
     <div class="modal fade flash-modal" id="flashModal{{ loop.index0 }}" tabindex="-1" aria-hidden="true">
       <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg tnw-modal-branded-shell">
@@ -273,8 +254,9 @@
     </div>
   </div>
 </div>
+{% endblock %}
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+{% block extra_scripts %}
 <script>
   document.addEventListener("DOMContentLoaded", function () {
     var flashModalEls = Array.from(document.querySelectorAll(".flash-modal"));
@@ -330,6 +312,4 @@
     });
   });
 </script>
-</main>
-</body>
-</html>
+{% endblock %}

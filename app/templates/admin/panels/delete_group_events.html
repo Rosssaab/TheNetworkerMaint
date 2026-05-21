@@ -1,0 +1,53 @@
+      <div class="admin-console-panel">
+        <div class="admin-console-surface">
+          <div class="d-flex flex-wrap align-items-start justify-content-between gap-2 mb-3">
+            <h2 class="h5 mb-0">Delete all events for one group</h2>
+            <span class="badge text-bg-danger">Danger zone</span>
+          </div>
+          <p class="admin-console-footer-note mb-3">
+            This keeps the selected event group, but permanently removes all events under it, including ticket types, attendee bookings, and sold ticket entries.
+          </p>
+          {% if impersonating %}
+            <div class="alert alert-warning py-2 px-3 mb-0">
+              This action is disabled while you are viewing as another user.
+            </div>
+          {% else %}
+            <form id="adminDeleteGroupEventsForm" method="post" action="{{ url_for('main.admin_meeting_group_delete_events') }}" class="row g-3">
+              <div class="col-lg-8">
+                <label class="form-label" for="adminDeleteEventsGroupSelect">Event group</label>
+                <select class="form-select" id="adminDeleteEventsGroupSelect" name="meeting_group_id" required>
+                  <option value="">Choose an event group...</option>
+                  {% for row in admin_delete_events_groups %}
+                    <option
+                      value="{{ row.meeting_group_id }}"
+                      data-meeting-count="{{ row.meeting_count }}"
+                      data-owner-email="{{ row.owner_email | e }}"
+                      {% if admin_delete_events_selected_group_id == row.meeting_group_id %}selected{% endif %}
+                    >{{ row.meeting_group_name }} (ID {{ row.meeting_group_id }}) - {{ row.meeting_count }} event{{ '' if row.meeting_count == 1 else 's' }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-lg-4">
+                <label class="form-label" for="adminDeleteEventsOwnerFilter">Owner email filter</label>
+                <input class="form-control" id="adminDeleteEventsOwnerFilter" type="search" value="" placeholder="Type owner email...">
+              </div>
+              <div class="col-12 d-flex align-items-center gap-3 flex-wrap">
+                <p class="small mb-0" id="adminDeleteEventsSelectionMeta">Choose a group to load its events.</p>
+                <button type="button" class="btn btn-outline-secondary ms-auto" id="adminDeleteEventsSelectAllBtn" disabled>Select all</button>
+                <button type="button" class="btn btn-outline-secondary" id="adminDeleteEventsClearBtn" disabled>Clear</button>
+                <button type="button" class="btn btn-danger" id="adminDeleteGroupEventsOpenBtn" disabled>Delete selected events</button>
+              </div>
+              <div class="col-12">
+                <div class="border rounded p-2 p-md-3">
+                  <div class="d-flex align-items-center justify-content-between mb-2">
+                    <p class="small fw-semibold mb-0">Events in selected group</p>
+                    <span class="small text-muted" id="adminDeleteEventsCountLabel">0 selected</span>
+                  </div>
+                  <div id="adminDeleteEventsList" class="small text-muted">Choose a group to load events.</div>
+                  <div id="adminDeleteEventsIdsMount"></div>
+                </div>
+              </div>
+            </form>
+          {% endif %}
+        </div>
+      </div>

@@ -8,6 +8,18 @@
   <p class="text-muted small mb-3" id="{{ _form_id }}Intro">{{ sign_in_intro }}</p>
   {% endif %}
   <div class="mb-3">
+    {% if tnw_maint_app %}
+    <label class="form-label" for="{{ _form_id }}Username">Username</label>
+    <input
+      type="text"
+      class="form-control"
+      name="username"
+      id="{{ _form_id }}Username"
+      value="{{ request.form.get('username', request.form.get('email', '')) }}"
+      required
+      autocomplete="username"
+    >
+    {% else %}
     <label class="form-label" for="{{ _form_id }}Email">Email</label>
     <input
       type="email"
@@ -18,6 +30,7 @@
       required
       autocomplete="email"
     >
+    {% endif %}
   </div>
   <div class="mb-2">
     <label class="form-label" for="{{ _pw_id }}">Password</label>
@@ -33,12 +46,16 @@
       <button class="btn btn-outline-secondary" type="button" id="{{ _toggle_id }}" aria-label="Show password">👁</button>
     </div>
   </div>
+  {% if not tnw_maint_app %}
   <div class="d-flex justify-content-end mb-3">
     <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('main.forgot_password') }}">Forgot password</a>
   </div>
+  {% endif %}
   <button class="btn btn-primary w-100" type="submit">Sign In</button>
 </form>
+{% if not tnw_maint_app %}
 <div class="text-center mt-3">
   <span class="small text-muted me-2">New here?</span>
   <button type="button" class="btn btn-outline-primary btn-sm" data-tnw-register-modal data-tnw-auth-switch="register">Register</button>
 </div>
+{% endif %}

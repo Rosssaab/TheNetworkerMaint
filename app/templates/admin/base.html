@@ -1,0 +1,83 @@
+{% extends "admin_base.html" %}
+{% set lbl_mg = table_label('event_groups', 'Event groups') %}
+{% set lbl_mt = table_label('events', 'Events') %}
+{% set lbl_ind = table_label('industries', 'Topics') %}
+
+{% block admin_main_container_class %}container-fluid px-2 px-sm-3 px-xl-4 admin-events-main-wide{% endblock %}
+
+{% block title %}Admin functions{% endblock %}
+
+{% block admin_topbar %}{% endblock %}
+
+{% block extra_head %}
+{% include "admin/_styles.html" %}
+{% block admin_extra_head %}{% endblock %}
+{% endblock %}
+
+{% block content %}
+  <header class="admin-functions-page-header mb-4">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+      <div class="min-w-0">
+        <h1 class="h3 admin-functions-page-title mb-1">Admin functions</h1>
+        <p class="admin-functions-page-sub mb-0">Site administrator tools in a separate theme from the public site.</p>
+      </div>
+      <div class="admin-functions-theme-picker flex-shrink-0">
+        {% with
+          theme_form_action=url_for('main.set_site_bootstrap_theme'),
+          tnw_bootstrap_theme=tnw_bootstrap_theme,
+          tnw_bootstrap_theme_choices=tnw_bootstrap_theme_choices,
+          theme_label='Bootstrap theme',
+          theme_select_id='adminBootstrapThemeSelect',
+          theme_on_dark_header=true
+        %}
+          {% include "partials/tnw_bootstrap_theme_picker.html" %}
+        {% endwith %}
+      </div>
+    </div>
+  </header>
+
+  <ul class="nav nav-pills admin-console-tabs mb-4" id="adminFunctionsNav" role="navigation" aria-label="Admin sections">
+    <li class="nav-item">
+      <a
+        class="nav-link {% if admin_nav_active == 'overview' %}active{% endif %}"
+        href="{{ url_for('main.admin_events', **admin_overview_nav_kwargs) }}"
+      ><i class="bi bi-collection me-1" aria-hidden="true"></i>{{ lbl_mg }}</a>
+    </li>
+    <li class="nav-item">
+      <a
+        class="nav-link {% if admin_nav_active == 'keywords' %}active{% endif %}"
+        href="{{ url_for('main.admin_keywords', **admin_ignore_test_users_nav) }}"
+      ><i class="bi bi-tags-fill me-1" aria-hidden="true"></i>Keywords</a>
+    </li>
+    <li class="nav-item">
+      <a
+        class="nav-link {% if admin_nav_active == 'users' %}active{% endif %}"
+        href="{{ url_for('main.admin_users', **admin_users_nav_kwargs) }}"
+      ><i class="bi bi-people me-1" aria-hidden="true"></i>Users</a>
+    </li>
+    <li class="nav-item">
+      <a
+        class="nav-link {% if admin_nav_active == 'move_events' %}active{% endif %}"
+        href="{{ url_for('main.admin_move_events', **admin_move_events_nav_kwargs) }}"
+      ><i class="bi bi-folder-symlink me-1" aria-hidden="true"></i>Move events</a>
+    </li>
+    <li class="nav-item">
+      <a
+        class="nav-link {% if admin_nav_active == 'delete_group_events' %}active{% endif %}"
+        href="{{ url_for('main.admin_delete_group_events') }}"
+      ><i class="bi bi-trash3 me-1" aria-hidden="true"></i>Delete group events</a>
+    </li>
+  </ul>
+
+  <div id="adminFunctionsPage">
+    {% block admin_panel %}{% endblock %}
+  </div>
+
+  {% block admin_panel_modals %}{% endblock %}
+  {% include "admin/modals/_shared.html" %}
+{% endblock %}
+
+{% block extra_scripts %}
+{% include "admin/scripts/_all.html" %}
+{% block admin_extra_scripts %}{% endblock %}
+{% endblock %}

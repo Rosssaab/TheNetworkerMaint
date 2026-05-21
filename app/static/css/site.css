@@ -1,0 +1,36 @@
+/* Public site layout (Bootstrap theme loaded separately). */
+html,
+body {
+  min-height: 100vh;
+}
+
+body {
+  background:
+    radial-gradient(circle at top, rgba(255, 255, 255, 0.5), transparent 24%),
+    linear-gradient(180deg, #f2f4f7 0%, #e8ebf0 52%, #dde2e8 100%);
+}
+
+.site-header {
+  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.06);
+}
+
+.site-logo-link {
+  display: inline-flex;
+  align-items: center;
+  max-width: min(12rem, 55vw);
+}
+
+.site-logo-link .site-logo {
+  max-height: 2.25rem;
+  width: auto;
+  height: auto;
+}
+
+.soft-panel {
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 0.75rem;
+}
+
+.section-title.tnw-page-title {
+  font-weight: 700;
+}

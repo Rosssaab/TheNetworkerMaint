@@ -19,29 +19,38 @@ body.admin-console-body {
   margin: 0;
   display: flex;
   flex-direction: column;
+}
+
+body.admin-console-body.tnw-bootswatch-theme {
+  background: var(--bs-body-bg);
+  color: var(--bs-body-color);
+  font-family: var(--bs-body-font-family, system-ui, sans-serif);
+}
+
+body.admin-console-body:not(.tnw-bootswatch-theme) {
   background: var(--ac-bg);
   color: var(--ac-text);
   font-family: system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
-.admin-console-topbar {
+body.admin-console-body:not(.tnw-bootswatch-theme) .admin-console-topbar {
   background: linear-gradient(180deg, #0f172a 0%, #0b1220 100%);
   border-bottom: 1px solid var(--ac-border);
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
 }
 
-.admin-console-topbar .navbar-brand {
+body.admin-console-body:not(.tnw-bootswatch-theme) .admin-console-topbar .navbar-brand {
   color: var(--ac-accent) !important;
   font-weight: 700;
   letter-spacing: 0.02em;
 }
 
-.admin-console-topbar .nav-link {
+body.admin-console-body:not(.tnw-bootswatch-theme) .admin-console-topbar .nav-link {
   color: var(--ac-muted) !important;
   border-radius: 0.375rem;
 }
 
-.admin-console-topbar .nav-link:hover {
+body.admin-console-body:not(.tnw-bootswatch-theme) .admin-console-topbar .nav-link:hover {
   color: var(--ac-text) !important;
   background: rgba(148, 163, 184, 0.12);
 }
@@ -62,27 +71,27 @@ body.admin-console-body {
   margin-right: auto;
 }
 
-.admin-console-page-title {
+body.admin-console-body:not(.tnw-bootswatch-theme) .admin-console-page-title {
   color: #f8fafc;
   font-weight: 600;
   letter-spacing: -0.02em;
 }
 
-.admin-console-surface {
+body.admin-console-body:not(.tnw-bootswatch-theme) .admin-console-surface {
   background: var(--ac-surface);
   border: 1px solid var(--ac-border);
   border-radius: 0.65rem;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
 }
 
-.admin-console-table {
+body.admin-console-body:not(.tnw-bootswatch-theme) .admin-console-table {
   --bs-table-bg: transparent;
   --bs-table-color: var(--ac-text);
   --bs-table-border-color: var(--ac-border);
   margin-bottom: 0;
 }
 
-.admin-console-table thead th {
+body.admin-console-body:not(.tnw-bootswatch-theme) .admin-console-table thead th {
   color: var(--ac-muted);
   font-size: 0.75rem;
   text-transform: uppercase;
@@ -91,43 +100,43 @@ body.admin-console-body {
   border-bottom-color: var(--ac-border);
 }
 
-.admin-console-table tbody tr:hover {
+body.admin-console-body:not(.tnw-bootswatch-theme) .admin-console-table tbody tr:hover {
   background: rgba(34, 211, 238, 0.06);
 }
 
-.admin-console-badge-draft {
+body.admin-console-body:not(.tnw-bootswatch-theme) .admin-console-badge-draft {
   background: rgba(251, 191, 36, 0.2);
   color: #fcd34d;
   border: 1px solid rgba(251, 191, 36, 0.35);
 }
 
-.admin-console-badge-live {
+body.admin-console-body:not(.tnw-bootswatch-theme) .admin-console-badge-live {
   background: rgba(52, 211, 153, 0.18);
   color: #6ee7b7;
   border: 1px solid rgba(52, 211, 153, 0.35);
 }
 
-.admin-console-stat {
+body.admin-console-body:not(.tnw-bootswatch-theme) .admin-console-stat {
   background: var(--ac-accent-dim);
   border: 1px solid rgba(34, 211, 238, 0.25);
   border-radius: 0.5rem;
   padding: 1rem 1.25rem;
 }
 
-.admin-console-stat .stat-value {
+body.admin-console-body:not(.tnw-bootswatch-theme) .admin-console-stat .stat-value {
   font-size: 1.75rem;
   font-weight: 700;
   color: var(--ac-accent);
   line-height: 1.1;
 }
 
-.admin-console-stat .stat-label {
+body.admin-console-body:not(.tnw-bootswatch-theme) .admin-console-stat .stat-label {
   font-size: 0.8rem;
   color: var(--ac-muted);
   margin-top: 0.25rem;
 }
 
-.admin-console-footer-note {
+body.admin-console-body:not(.tnw-bootswatch-theme) .admin-console-footer-note {
   color: var(--ac-muted);
   font-size: 0.8rem;
 }
@@ -137,7 +146,7 @@ body.admin-console-body {
   flex-wrap: wrap;
 }
 
-.admin-console-tabs .nav-link {
+body.admin-console-body:not(.tnw-bootswatch-theme) .admin-console-tabs .nav-link {
   color: var(--ac-muted);
   background: rgba(15, 23, 42, 0.6);
   border: 1px solid var(--ac-border);
@@ -146,18 +155,18 @@ body.admin-console-body {
   font-weight: 500;
 }
 
-.admin-console-tabs .nav-link:hover {
+body.admin-console-body:not(.tnw-bootswatch-theme) .admin-console-tabs .nav-link:hover {
   color: var(--ac-text);
   border-color: rgba(148, 163, 184, 0.45);
 }
 
-.admin-console-tabs .nav-link.active {
+body.admin-console-body:not(.tnw-bootswatch-theme) .admin-console-tabs .nav-link.active {
   color: #0b1220 !important;
   background: var(--ac-accent) !important;
   border-color: var(--ac-accent);
 }
 
-.admin-console-panel {
+body.admin-console-body:not(.tnw-bootswatch-theme) .admin-console-panel {
   background: var(--ac-surface);
   border: 1px solid var(--ac-border);
   border-radius: 0.65rem;
@@ -165,36 +174,36 @@ body.admin-console-body {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
 }
 
-.admin-console-panel .form-label {
+body.admin-console-body:not(.tnw-bootswatch-theme) .admin-console-panel .form-label {
   color: var(--ac-muted);
   font-size: 0.8rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
-.admin-console-panel .form-control,
-.admin-console-panel .form-select {
+body.admin-console-body:not(.tnw-bootswatch-theme) .admin-console-panel .form-control,
+body.admin-console-body:not(.tnw-bootswatch-theme) .admin-console-panel .form-select {
   background: #0f172a;
   border-color: var(--ac-border);
   color: var(--ac-text);
 }
 
-.admin-console-panel .form-control:focus,
-.admin-console-panel .form-select:focus {
+body.admin-console-body:not(.tnw-bootswatch-theme) .admin-console-panel .form-control:focus,
+body.admin-console-body:not(.tnw-bootswatch-theme) .admin-console-panel .form-select:focus {
   background: #0f172a;
   border-color: var(--ac-accent);
   color: var(--ac-text);
   box-shadow: 0 0 0 0.2rem rgba(34, 211, 238, 0.2);
 }
 
-.admin-console-panel .form-text {
+body.admin-console-body:not(.tnw-bootswatch-theme) .admin-console-panel .form-text {
   color: var(--ac-muted);
 }
 
 /* ------------------------------------------------------------------------- */
-/* Light shell: readable page chrome when a light Bootswatch theme is chosen */
+/* Light shell: stock Bootstrap only (custom chrome, not Bootswatch) */
 /* ------------------------------------------------------------------------- */
-body.admin-console-light-shell {
+body.admin-console-body.admin-console-light-shell:not(.tnw-bootswatch-theme) {
   --ac-bg: #e8edf5;
   --ac-surface: #ffffff;
   --ac-border: rgba(15, 23, 42, 0.12);
@@ -205,75 +214,124 @@ body.admin-console-light-shell {
   --ac-warn: #d97706;
 }
 
-body.admin-console-light-shell .admin-console-topbar {
+body.admin-console-body.admin-console-light-shell:not(.tnw-bootswatch-theme) .admin-console-topbar {
   background: #f8fafc;
   border-bottom: 1px solid rgba(15, 23, 42, 0.1);
   box-shadow: 0 2px 12px rgba(15, 23, 42, 0.06);
 }
 
-body.admin-console-light-shell .admin-console-topbar .nav-link {
+body.admin-console-body.admin-console-light-shell:not(.tnw-bootswatch-theme) .admin-console-topbar .nav-link {
   color: #334155 !important;
 }
 
-body.admin-console-light-shell .admin-console-topbar .nav-link:hover {
+body.admin-console-body.admin-console-light-shell:not(.tnw-bootswatch-theme) .admin-console-topbar .nav-link:hover {
   color: #0f172a !important;
   background: rgba(14, 165, 233, 0.12);
 }
 
-body.admin-console-light-shell .admin-console-page-title {
+body.admin-console-body.admin-console-light-shell:not(.tnw-bootswatch-theme) .admin-console-page-title {
   color: #0f172a;
 }
 
-body.admin-console-light-shell .admin-console-surface {
+body.admin-console-body.admin-console-light-shell:not(.tnw-bootswatch-theme) .admin-console-surface {
   box-shadow: 0 6px 20px rgba(15, 23, 42, 0.08);
 }
 
-body.admin-console-light-shell .admin-console-table thead th {
+body.admin-console-body.admin-console-light-shell:not(.tnw-bootswatch-theme) .admin-console-table thead th {
   color: #64748b;
 }
 
-body.admin-console-light-shell .admin-console-table tbody tr:hover {
+body.admin-console-body.admin-console-light-shell:not(.tnw-bootswatch-theme) .admin-console-table tbody tr:hover {
   background: rgba(14, 165, 233, 0.08);
 }
 
-body.admin-console-light-shell .admin-console-tabs .nav-link {
+body.admin-console-body.admin-console-light-shell:not(.tnw-bootswatch-theme) .admin-console-tabs .nav-link {
   color: #475569;
   background: rgba(255, 255, 255, 0.85);
   border: 1px solid var(--ac-border);
 }
 
-body.admin-console-light-shell .admin-console-tabs .nav-link:hover {
+body.admin-console-body.admin-console-light-shell:not(.tnw-bootswatch-theme) .admin-console-tabs .nav-link:hover {
   color: #0f172a;
   border-color: rgba(14, 165, 233, 0.45);
 }
 
-body.admin-console-light-shell .admin-console-tabs .nav-link.active {
+body.admin-console-body.admin-console-light-shell:not(.tnw-bootswatch-theme) .admin-console-tabs .nav-link.active {
   color: #fff !important;
   background: var(--ac-accent) !important;
   border-color: var(--ac-accent);
 }
 
-body.admin-console-light-shell .admin-console-panel .form-control,
-body.admin-console-light-shell .admin-console-panel .form-select {
+body.admin-console-body.admin-console-light-shell:not(.tnw-bootswatch-theme) .admin-console-panel .form-control,
+body.admin-console-body.admin-console-light-shell:not(.tnw-bootswatch-theme) .admin-console-panel .form-select {
   background: #fff;
   color: #0f172a;
 }
 
-body.admin-console-light-shell .admin-console-panel .form-control:focus,
-body.admin-console-light-shell .admin-console-panel .form-select:focus {
+body.admin-console-body.admin-console-light-shell:not(.tnw-bootswatch-theme) .admin-console-panel .form-control:focus,
+body.admin-console-body.admin-console-light-shell:not(.tnw-bootswatch-theme) .admin-console-panel .form-select:focus {
   background: #fff;
   color: #0f172a;
   box-shadow: 0 0 0 0.2rem rgba(14, 165, 233, 0.25);
 }
 
-body.admin-console-light-shell .admin-console-badge-draft {
+body.admin-console-body.admin-console-light-shell:not(.tnw-bootswatch-theme) .admin-console-badge-draft {
   color: #92400e;
   background: rgba(251, 191, 36, 0.35);
   border-color: rgba(217, 119, 6, 0.45);
 }
 
-body.admin-console-light-shell .admin-console-badge-live {
+body.admin-console-body.admin-console-light-shell:not(.tnw-bootswatch-theme) .admin-console-badge-live {
   color: #065f46;
   background: rgba(52, 211, 153, 0.35);
   border-color: rgba(5, 150, 105, 0.45);
+}
+
+/* Bootswatch: panels/surfaces follow the active Bootstrap skin */
+body.admin-console-body.tnw-bootswatch-theme .admin-console-surface,
+body.admin-console-body.tnw-bootswatch-theme .admin-console-panel {
+  background: var(--bs-body-bg);
+  border-color: var(--bs-border-color);
+  color: var(--bs-body-color);
+  box-shadow: var(--bs-box-shadow-sm, 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075));
+}
+
+body.admin-console-body.tnw-bootswatch-theme .admin-console-footer-note {
+  color: var(--bs-secondary-color);
+}
+
+body.admin-console-body.tnw-bootswatch-theme .admin-console-page-title {
+  color: var(--bs-heading-color, var(--bs-body-color));
+}
+
+/* Admin functions: branded page header band (fixed colour, independent of Bootswatch skin) */
+.admin-functions-page-header {
+  background: linear-gradient(135deg, #1a1033 0%, #2a1850 42%, #152a4a 100%);
+  color: #f1f5f9;
+  border-radius: 0.65rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 4px 20px rgba(15, 23, 42, 0.35);
+}
+
+.admin-functions-page-title {
+  color: #f8fafc;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.admin-functions-page-sub {
+  color: rgba(226, 232, 240, 0.82);
+  font-size: 0.875rem;
+}
+
+.admin-functions-theme-picker .form-select {
+  background-color: rgba(255, 255, 255, 0.96);
+  color: #0f172a;
+  border-color: rgba(255, 255, 255, 0.35);
+  min-width: 11rem;
+}
+
+.admin-console-main {
+  padding-top: 1.25rem;
 }

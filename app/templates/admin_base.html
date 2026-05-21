@@ -14,10 +14,10 @@
   <link href="{{ url_for('static', filename='css/tnw-square-image-crop.css') }}" rel="stylesheet">
   {% block extra_head %}{% endblock %}
 </head>
-<body class="admin-console-body{% if tnw_admin_bootstrap_light_shell %} admin-console-light-shell{% endif %}">
+<body class="admin-console-body{% if tnw_bootswatch_theme_active %} tnw-bootswatch-theme{% elif tnw_admin_bootstrap_light_shell %} admin-console-light-shell{% endif %}">
   {% block admin_topbar %}
   <header class="admin-console-topbar">
-    <nav class="navbar navbar-expand-lg {% if tnw_admin_bootstrap_light_shell %}navbar-light bg-light border-bottom shadow-sm{% else %}navbar-dark{% endif %}">
+    <nav class="navbar navbar-expand-lg {% if tnw_bootswatch_theme_active %}border-bottom{% elif tnw_admin_bootstrap_light_shell %}navbar-light bg-light border-bottom shadow-sm{% else %}navbar-dark{% endif %}">
       <div class="container flex-wrap gap-2">
         <span class="navbar-brand mb-0 {% if tnw_admin_bootstrap_light_shell %}text-primary{% endif %}">
           <i class="bi bi-shield-lock-fill me-2" aria-hidden="true"></i>{% block admin_brand %}Admin console{% endblock %}
@@ -28,23 +28,16 @@
         <div class="collapse navbar-collapse" id="adminNav">
           <ul class="navbar-nav ms-auto gap-lg-1 flex-wrap align-items-lg-center">
             <li class="nav-item py-1">
-              <form method="post" action="{{ url_for('main.set_admin_bootstrap_theme') }}" class="d-flex flex-column flex-sm-row align-items-stretch align-items-sm-center gap-1 gap-sm-2 mb-0">
-                <input type="hidden" name="panel" value="{{ (request.args.get('panel') or 'overview')|lower }}">
-                <label for="adminBootstrapThemeSelect" class="small mb-0 text-nowrap {% if tnw_admin_bootstrap_light_shell %}text-secondary{% else %}text-white-50{% endif %} d-none d-md-inline">Bootstrap theme</label>
-                <select
-                  id="adminBootstrapThemeSelect"
-                  name="theme"
-                  class="form-select form-select-sm"
-                  style="max-width: 13rem;"
-                  autocomplete="off"
-                  aria-label="Bootstrap theme for admin pages"
-                  onchange="this.form.submit()"
-                >
-                  {% for row in tnw_admin_bootstrap_theme_choices %}
-                    <option value="{{ row.id }}" {% if row.id == tnw_admin_bootstrap_theme %}selected{% endif %}>{{ row.label }}</option>
-                  {% endfor %}
-                </select>
-              </form>
+              {% with
+                theme_form_action=url_for('main.set_site_bootstrap_theme'),
+                tnw_bootstrap_theme=tnw_bootstrap_theme,
+                tnw_bootstrap_theme_choices=tnw_bootstrap_theme_choices,
+                theme_label='Bootstrap theme',
+                theme_select_id='adminBootstrapThemeSelect',
+                theme_label_muted=tnw_bootswatch_theme_active or tnw_admin_bootstrap_light_shell
+              %}
+                {% include "partials/tnw_bootstrap_theme_picker.html" %}
+              {% endwith %}
             </li>
           </ul>
         </div>

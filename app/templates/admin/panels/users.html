@@ -1,0 +1,150 @@
+      <div class="admin-console-panel mb-3">
+        <form id="adminUsersFilterForm" method="get" action="{{ url_for('main.admin_users') }}">
+          <div class="d-flex flex-wrap align-items-center column-gap-3 row-gap-2 mb-2 mb-md-3">
+            <h2 class="h6 text-uppercase admin-console-footer-note mb-0">Filter users</h2>
+            <input type="hidden" name="ignore_test_users" id="adminUsersIgnoreTestHidden" value="{{ '0' if request.args.get('ignore_test_users') == '0' else '1' }}">
+            <div class="form-check mb-0">
+              <input type="checkbox" class="form-check-input" id="adminUsersIgnoreTestCb" {% if request.args.get('ignore_test_users') != '0' %}checked{% endif %}>
+              <label class="form-check-label small text-nowrap" for="adminUsersIgnoreTestCb">Ignore test users</label>
+            </div>
+          </div>
+          <div class="d-flex flex-wrap align-items-end gap-2 gap-md-3">
+          <input type="hidden" name="usort" value="{{ admin_users_sort_key }}">
+          <input type="hidden" name="udir" value="{{ admin_users_sort_dir }}">
+          <div class="d-flex flex-column" style="min-width: 9rem; width: 12rem; max-width: 100%;">
+            <label class="form-label mb-0" for="usersUq">Username contains</label>
+            <input class="form-control form-control-sm" id="usersUq" name="user_q" value="{{ request.args.get('user_q', '') }}" autocomplete="off">
+          </div>
+          <div class="d-flex flex-column" style="min-width: 9rem; width: 14rem; max-width: 100%;">
+            <label class="form-label mb-0" for="usersEmailQ">Email contains</label>
+            <input class="form-control form-control-sm" id="usersEmailQ" name="user_email_q" value="{{ request.args.get('user_email_q', '') }}" autocomplete="off">
+          </div>
+          <div class="d-flex flex-column" style="min-width: 8rem; max-width: 100%;">
+            <label class="form-label mb-0" for="usersVerified">Verified</label>
+            <select class="form-select form-select-sm" id="usersVerified" name="user_verified">
+              <option value="" {% if not request.args.get('user_verified') %}selected{% endif %}>Any</option>
+              <option value="yes" {% if request.args.get('user_verified') == 'yes' %}selected{% endif %}>Yes</option>
+              <option value="no" {% if request.args.get('user_verified') == 'no' %}selected{% endif %}>No</option>
+            </select>
+          </div>
+          <div class="d-flex flex-column" style="min-width: 8rem; max-width: 100%;">
+            <label class="form-label mb-0" for="usersAdmin">Admin</label>
+            <select class="form-select form-select-sm" id="usersAdmin" name="user_admin">
+              <option value="" {% if not request.args.get('user_admin') %}selected{% endif %}>Any</option>
+              <option value="yes" {% if request.args.get('user_admin') == 'yes' %}selected{% endif %}>Admins only</option>
+              <option value="no" {% if request.args.get('user_admin') == 'no' %}selected{% endif %}>Non-admins</option>
+            </select>
+          </div>
+          <div class="d-flex flex-wrap align-items-center gap-2 pb-1">
+            <button type="submit" class="btn btn-primary btn-sm">Apply filters</button>
+            <a class="btn btn-primary btn-sm" href="{{ url_for('main.admin_users') }}">Clear</a>
+          </div>
+          </div>
+        </form>
+      </div>
+
+      <div id="adminUsersGridWrap">
+        <div class="admin-console-surface admin-console-surface--overview-grid admin-overview-table-theme">
+          <div class="px-3 py-2 border-bottom border-secondary border-opacity-25 d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <span class="small text-uppercase fw-semibold" style="color: var(--ac-muted); letter-spacing: 0.06em;">Users</span>
+            <span class="small admin-console-footer-note">
+              Showing {{ admin_users_rows|length }} of {{ admin_users_total }} (page {{ admin_users_page }} / {{ admin_users_pages }}, {{ admin_users_per_page }} per page)
+            </span>
+          </div>
+          <div class="admin-overview-grid-scroll border-top border-secondary border-opacity-25">
+            <div class="table-responsive">
+              <table class="table table-sm admin-console-table admin-console-table--dense admin-overview-data-grid align-middle">
+                <thead>
+                  <tr>
+                    <th scope="col"><a href="{{ admin_users_sort_urls.user_id }}" class="link-offset-2">ID{% if admin_users_sort_key == 'user_id' %} <i class="bi bi-arrow-{{ 'up' if admin_users_sort_dir == 'asc' else 'down' }}" aria-hidden="true"></i>{% endif %}</a></th>
+                    <th scope="col"><a href="{{ admin_users_sort_urls.username }}" class="link-offset-2">Username{% if admin_users_sort_key == 'username' %} <i class="bi bi-arrow-{{ 'up' if admin_users_sort_dir == 'asc' else 'down' }}" aria-hidden="true"></i>{% endif %}</a></th>
+                    <th scope="col"><a href="{{ admin_users_sort_urls.email }}" class="link-offset-2">Email{% if admin_users_sort_key == 'email' %} <i class="bi bi-arrow-{{ 'up' if admin_users_sort_dir == 'asc' else 'down' }}" aria-hidden="true"></i>{% endif %}</a></th>
+                    <th scope="col" class="text-center"><a href="{{ admin_users_sort_urls.verified }}" class="link-offset-2">Verified{% if admin_users_sort_key == 'verified' %} <i class="bi bi-arrow-{{ 'up' if admin_users_sort_dir == 'asc' else 'down' }}" aria-hidden="true"></i>{% endif %}</a></th>
+                    <th scope="col" class="text-center"><a href="{{ admin_users_sort_urls.admin }}" class="link-offset-2">Admin{% if admin_users_sort_key == 'admin' %} <i class="bi bi-arrow-{{ 'up' if admin_users_sort_dir == 'asc' else 'down' }}" aria-hidden="true"></i>{% endif %}</a></th>
+                    <th scope="col" class="text-end"><a href="{{ admin_users_sort_urls.groups }}" class="link-offset-2">Groups{% if admin_users_sort_key == 'groups' %} <i class="bi bi-arrow-{{ 'up' if admin_users_sort_dir == 'asc' else 'down' }}" aria-hidden="true"></i>{% endif %}</a></th>
+                    <th scope="col" class="text-end"><a href="{{ admin_users_sort_urls.attendees }}" class="link-offset-2">Tickets{% if admin_users_sort_key == 'attendees' %} <i class="bi bi-arrow-{{ 'up' if admin_users_sort_dir == 'asc' else 'down' }}" aria-hidden="true"></i>{% endif %}</a></th>
+                    <th scope="col" class="text-end"><a href="{{ admin_users_sort_urls.creator }}" class="link-offset-2">Created events{% if admin_users_sort_key == 'creator' %} <i class="bi bi-arrow-{{ 'up' if admin_users_sort_dir == 'asc' else 'down' }}" aria-hidden="true"></i>{% endif %}</a></th>
+                    <th scope="col" class="text-end">Topics</th>
+                    <th scope="col" class="text-end">Profile tags</th>
+                    <th scope="col"><a href="{{ admin_users_sort_urls.created }}" class="link-offset-2">Joined{% if admin_users_sort_key == 'created' %} <i class="bi bi-arrow-{{ 'up' if admin_users_sort_dir == 'asc' else 'down' }}" aria-hidden="true"></i>{% endif %}</a></th>
+                    <th scope="col" class="text-end admin-mg-actions-col admin-overview-actions-th">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for row in admin_users_rows %}
+                    {% set u = row.user %}
+                    <tr class="admin-mg-overview-row">
+                      <td class="text-secondary small">{{ u.user_id }}</td>
+                      <td class="fw-medium">{{ u.username }}</td>
+                      <td class="small text-secondary">{{ u.email }}</td>
+                      <td class="small text-center">{% if u.is_verified %}<span class="text-success">Yes</span>{% else %}<span class="text-secondary">No</span>{% endif %}</td>
+                      <td class="small text-center">{% if u.admin_user %}<span class="badge rounded-pill bg-warning text-dark">Admin</span>{% else %}—{% endif %}</td>
+                      <td class="small text-end">{{ row.n_groups }}</td>
+                      <td class="small text-end">{{ row.n_attendee_rows }}</td>
+                      <td class="small text-end">{{ row.n_creator_meetings }}</td>
+                      <td class="small text-end">{{ row.n_industries }}</td>
+                      <td class="small text-end">{{ row.n_attendee_tags }}</td>
+                      <td class="small text-secondary text-nowrap">{{ u.created_date.strftime('%Y-%m-%d') if u.created_date else '—' }}</td>
+                      <td class="small text-end admin-mg-actions-cell">
+                        <div class="d-flex justify-content-end align-items-center gap-1 flex-wrap">
+                          <button
+                            type="button"
+                            class="btn btn-outline-success btn-sm px-2 py-0 js-admin-user-edit-open"
+                            title="Edit user"
+                            aria-label="Edit {{ u.username | e }}"
+                            data-user-id="{{ u.user_id }}"
+                          ><i class="bi bi-pencil" aria-hidden="true"></i></button>
+                          <button
+                            type="button"
+                            class="btn btn-outline-danger btn-sm px-2 py-0 js-admin-user-delete-open"
+                            title="Delete user"
+                            aria-label="Delete {{ u.username | e }}"
+                            data-user-id="{{ u.user_id }}"
+                            data-username="{{ u.username | e }}"
+                            data-email="{{ u.email | e }}"
+                            data-delete-url="{{ url_for('main.admin_user_delete', user_id=u.user_id) }}"
+                            data-n-groups="{{ row.n_groups }}"
+                            data-n-attendee-rows="{{ row.n_attendee_rows }}"
+                            data-n-creator="{{ row.n_creator_meetings }}"
+                            data-n-industries="{{ row.n_industries }}"
+                            data-n-attendee-tags="{{ row.n_attendee_tags }}"
+                          ><i class="bi bi-trash3" aria-hidden="true"></i></button>
+                        </div>
+                      </td>
+                    </tr>
+                  {% else %}
+                    <tr>
+                      <td colspan="12" class="text-center py-4 admin-console-footer-note">No users match the current filters.</td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          {% if admin_users_pagination.pages > 1 %}
+          <nav class="px-3 py-2 border-top border-secondary border-opacity-25" aria-label="Users pagination">
+            <ul class="pagination pagination-sm mb-0 flex-wrap">
+              {% if admin_users_pagination.has_prev %}
+              <li class="page-item">
+                <a class="page-link" href="{{ url_for('main.admin_users', users_page=admin_users_pagination.prev_num, **admin_users_nav_kwargs) }}">Previous</a>
+              </li>
+              {% endif %}
+              {% for p in admin_users_pagination.iter_pages() %}
+                {% if p %}
+                  <li class="page-item{% if p == admin_users_page %} active{% endif %}">
+                    <a class="page-link" href="{{ url_for('main.admin_users', users_page=p, **admin_users_nav_kwargs) }}">{{ p }}</a>
+                  </li>
+                {% else %}
+                  <li class="page-item disabled"><span class="page-link">…</span></li>
+                {% endif %}
+              {% endfor %}
+              {% if admin_users_pagination.has_next %}
+              <li class="page-item">
+                <a class="page-link" href="{{ url_for('main.admin_users', users_page=admin_users_pagination.next_num, **admin_users_nav_kwargs) }}">Next</a>
+              </li>
+              {% endif %}
+            </ul>
+          </nav>
+          {% endif %}
+        </div>
+      </div>

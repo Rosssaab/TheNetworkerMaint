@@ -1,0 +1,12 @@
+{% extends "admin/base.html" %}
+{% set admin_nav_active = 'move_events' %}
+
+{% block admin_panel %}
+<div
+  id="adminPanelMoveEvents"
+  data-lookup-url="{{ url_for('main.admin_meeting_groups_lookup_for_move') }}"
+  data-impersonating="{{ '1' if impersonating else '0' }}"
+>
+{% include "admin/panels/move_events.html" %}
+</div>
+{% endblock %}

@@ -1,0 +1,470 @@
+  {% if admin_move_events_notice %}
+  <div class="modal fade" id="adminMoveEventsResultModal" tabindex="-1" aria-labelledby="adminMoveEventsResultModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 26rem;">
+      <div class="modal-content tnw-modal-branded-shell border border-success {% if tnw_admin_bootstrap_light_shell %}bg-light text-dark{% else %}bg-dark text-light{% endif %}">
+        {% with modal_title = admin_move_events_notice.title, modal_title_id = 'adminMoveEventsResultModalLabel', use_h2_title = true %}
+          {% include "partials/tnw_modal_header_branded.html" %}
+        {% endwith %}
+        <div class="modal-body py-3">
+          <p class="mb-0" id="adminMoveEventsResultBody">{{ admin_move_events_notice.body }}</p>
+        </div>
+        <div class="modal-footer py-3 border-success border-opacity-50">
+          <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+  {% if admin_delete_events_notice %}
+  <div class="modal fade" id="adminDeleteEventsResultModal" tabindex="-1" aria-labelledby="adminDeleteEventsResultModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 26rem;">
+      <div class="modal-content tnw-modal-branded-shell border border-success {% if tnw_admin_bootstrap_light_shell %}bg-light text-dark{% else %}bg-dark text-light{% endif %}">
+        {% with modal_title = admin_delete_events_notice.title, modal_title_id = 'adminDeleteEventsResultModalLabel', use_h2_title = true %}
+          {% include "partials/tnw_modal_header_branded.html" %}
+        {% endwith %}
+        <div class="modal-body py-3">
+          <p class="mb-0" id="adminDeleteEventsResultBody">{{ admin_delete_events_notice.body }}</p>
+        </div>
+        <div class="modal-footer py-3 border-success border-opacity-50">
+          <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="modal fade" id="adminMgImageReplaceModal" tabindex="-1" aria-labelledby="adminMgImageReplaceModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content tnw-modal-branded-shell {% if tnw_admin_bootstrap_light_shell %}bg-light text-dark border{% else %}bg-dark text-light border border-secondary{% endif %}">
+        {% with modal_title = 'Replace event image', modal_title_id = 'adminMgImageReplaceModalLabel', use_h2_title = true %}
+          {% include "partials/tnw_modal_header_branded.html" %}
+        {% endwith %}
+        <div class="modal-body">
+          <p class="fw-semibold mb-1" id="adminMgImgReplaceGroupName"></p>
+          <p class="small text-secondary mb-2">
+            <span class="me-2">ID <span id="adminMgImgReplaceId"></span></span>
+            <span class="text-break" id="adminMgImgReplaceEmail"></span>
+          </p>
+          <p class="small mb-2">
+            <span class="text-secondary">File on disk:</span>
+            <code class="user-select-all" id="adminMgImgReplaceFilename"></code>
+          </p>
+          <p class="small admin-console-footer-note mb-3" id="adminMgImgReplaceHint"></p>
+          <img id="adminMgImgReplacePreview" class="admin-mg-img-replace-preview mb-3 d-block border" src="" alt="Current banner">
+          <input type="file" id="adminMgImgReplaceFile" class="d-none" accept="image/jpeg,image/png,image/webp" aria-label="Choose replacement image">
+          <div
+            id="adminMgImgReplaceDrop"
+            class="admin-mg-img-paste-zone"
+            tabindex="0"
+            role="region"
+            aria-label="Paste or drop replacement image"
+          >
+            <span class="d-block fw-semibold">Paste or drop here</span>
+            <span class="d-block text-secondary">Ctrl+V works anywhere in this dialog while it is open, or drop a JPG / PNG / WebP on this box</span>
+          </div>
+        </div>
+        <div class="modal-footer {% if tnw_admin_bootstrap_light_shell %}border-secondary border-opacity-25{% else %}border-secondary{% endif %} d-flex flex-wrap gap-2">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-outline-primary ms-auto" id="adminMgImgReplacePickBtn">Choose file…</button>
+          <button type="button" class="btn btn-success" id="adminMgImgReplaceSaveBtn" disabled>
+            <span>Save image</span>
+            <span class="spinner-border spinner-border-sm d-none ms-2" id="adminMgImgReplaceSaveSpin" role="status" aria-hidden="true"></span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="adminTeAiApproveModal" tabindex="-1" aria-labelledby="adminTeAiApproveModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content tnw-modal-branded-shell {% if tnw_admin_bootstrap_light_shell %}bg-light text-dark border{% else %}bg-dark text-light border border-secondary{% endif %}">
+        {% with modal_title = 'AI draft ready', modal_title_id = 'adminTeAiApproveModalLabel', use_h2_title = true %}
+          {% include "partials/tnw_modal_header_branded.html" %}
+        {% endwith %}
+        <div class="modal-body" id="adminTeAiApproveBody"></div>
+        <div class="modal-footer {% if tnw_admin_bootstrap_light_shell %}border-secondary border-opacity-25{% else %}border-secondary{% endif %} d-flex flex-wrap gap-2 align-items-center">
+          <button type="button" class="btn {% if tnw_admin_bootstrap_light_shell %}btn-outline-secondary{% else %}btn-outline-light{% endif %}" data-bs-dismiss="modal">Discard</button>
+          <button type="button" class="btn {% if tnw_admin_bootstrap_light_shell %}btn-outline-primary{% else %}btn-outline-info{% endif %}" id="adminTeAiRegenerateBtn">
+            <i class="bi bi-arrow-repeat" aria-hidden="true"></i> Generate another draft
+          </button>
+          <button type="button" class="btn btn-primary ms-md-auto" id="adminTeAiApproveConfirmBtn">Continue — apply suggestions</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="adminRowCascadeDeleteModal" tabindex="-1" aria-labelledby="adminRowCascadeDeleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content tnw-modal-branded-shell {% if tnw_admin_bootstrap_light_shell %}bg-light text-dark border{% else %}bg-dark text-light border border-secondary{% endif %}">
+        {% with modal_title = 'Confirm cascade delete', modal_title_id = 'adminRowCascadeDeleteModalLabel', use_h2_title = true %}
+          {% include "partials/tnw_modal_header_branded.html" %}
+        {% endwith %}
+        <div class="modal-body" id="adminRowCascadeDeleteBody"></div>
+        <div class="modal-footer {% if tnw_admin_bootstrap_light_shell %}border-secondary border-opacity-25{% else %}border-secondary{% endif %}">
+          <button type="button" class="btn {% if tnw_admin_bootstrap_light_shell %}btn-outline-secondary{% else %}btn-outline-light{% endif %}" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-danger" id="adminRowCascadeDeleteSubmit" form="adminRowCascadeDeleteForm">Delete permanently</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <form method="post" id="adminRowCascadeDeleteForm" action="{{ url_for('main.admin_meeting_group_cascade_delete') }}" class="d-none" aria-hidden="true">
+    {% for rk, rv in admin_bulk_ret_fields %}
+      <input type="hidden" name="ret_{{ rk }}" value="{{ rv }}">
+    {% endfor %}
+    <input type="hidden" name="meeting_group_id" id="adminRowCascadeDeleteGroupId" value="">
+  </form>
+
+  <div class="modal fade" id="adminUserDeleteModal" tabindex="-1" aria-labelledby="adminUserDeleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content tnw-modal-branded-shell {% if tnw_admin_bootstrap_light_shell %}bg-light text-dark border{% else %}bg-dark text-light border border-secondary{% endif %}">
+        {% with modal_title = 'Confirm delete user', modal_title_id = 'adminUserDeleteModalLabel', use_h2_title = true %}
+          {% include "partials/tnw_modal_header_branded.html" %}
+        {% endwith %}
+        <div class="modal-body" id="adminUserDeleteModalBody"></div>
+        <div class="modal-footer {% if tnw_admin_bootstrap_light_shell %}border-secondary border-opacity-25{% else %}border-secondary{% endif %}">
+          <button type="button" class="btn {% if tnw_admin_bootstrap_light_shell %}btn-outline-secondary{% else %}btn-outline-light{% endif %}" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-danger" form="adminUserDeleteForm">Delete user</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <form method="post" id="adminUserDeleteForm" action="" class="d-none" aria-hidden="true">
+    {% for rk, rv in admin_users_ret_fields %}
+      <input type="hidden" name="ret_{{ rk }}" value="{{ rv }}">
+    {% endfor %}
+  </form>
+
+  <div class="modal fade" id="adminUserEditModal" tabindex="-1" aria-labelledby="adminUserEditModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content tnw-modal-branded-shell {% if tnw_admin_bootstrap_light_shell %}bg-light text-dark border{% else %}bg-dark text-light border border-secondary{% endif %}">
+        {% with modal_title = 'Edit account', modal_title_id = 'adminUserEditModalLabel', use_h2_title = true %}
+          {% include "partials/tnw_modal_header_branded.html" %}
+        {% endwith %}
+        <div class="modal-body">
+          <div class="alert alert-danger py-2 px-3 small mb-3 d-none" id="adminUserEditAlert" role="alert" aria-live="polite"></div>
+          <form id="adminUserEditForm" method="post" action="">
+            {% for rk, rv in admin_users_ret_fields %}
+              <input type="hidden" name="ret_{{ rk }}" value="{{ rv }}">
+            {% endfor %}
+            <div class="mb-3">
+              <label class="form-label" for="modUserUsername">Username</label>
+              <input class="form-control form-control-sm" id="modUserUsername" name="username" required maxlength="50" autocomplete="username">
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="modUserEmail">Email</label>
+              <input class="form-control form-control-sm" id="modUserEmail" name="email" type="email" required maxlength="50" autocomplete="email">
+            </div>
+            <div class="row g-2 mb-3">
+              <div class="col-md-6">
+                <label class="form-label" for="modUserFirst">First name</label>
+                <input class="form-control form-control-sm" id="modUserFirst" name="first_name" maxlength="100" autocomplete="given-name">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label" for="modUserSecond">Second name</label>
+                <input class="form-control form-control-sm" id="modUserSecond" name="second_name" maxlength="100" autocomplete="family-name">
+              </div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="modUserMobile">Mobile</label>
+              <input class="form-control form-control-sm" id="modUserMobile" name="mobile" maxlength="50" autocomplete="tel">
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="modUserCountry">Country</label>
+              <select class="form-select form-select-sm" id="modUserCountry" name="country_id" required></select>
+            </div>
+            <div class="form-check mb-0">
+              <input class="form-check-input" type="checkbox" id="modUserAdmin" name="admin_user" value="1">
+              <label class="form-check-label" for="modUserAdmin">Site administrator</label>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer {% if tnw_admin_bootstrap_light_shell %}border-secondary border-opacity-25{% else %}border-secondary{% endif %}">
+          <button type="button" class="btn {% if tnw_admin_bootstrap_light_shell %}btn-outline-secondary{% else %}btn-outline-light{% endif %}" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary" form="adminUserEditForm" id="adminUserEditSubmit">Save changes</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="adminToolbarMsgModal" tabindex="-1" aria-labelledby="adminToolbarMsgModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content tnw-modal-branded-shell {% if tnw_admin_bootstrap_light_shell %}bg-light text-dark border{% else %}bg-dark text-light border border-secondary{% endif %}">
+        {% with modal_title = 'Notice', modal_title_id = 'adminToolbarMsgModalLabel', use_h2_title = true %}
+          {% include "partials/tnw_modal_header_branded.html" %}
+        {% endwith %}
+        <div class="modal-body" id="adminToolbarMsgModalBody"></div>
+        <div class="modal-footer {% if tnw_admin_bootstrap_light_shell %}border-secondary border-opacity-25{% else %}border-secondary{% endif %}">
+          <button type="button" class="btn {% if tnw_admin_bootstrap_light_shell %}btn-primary{% else %}btn-light{% endif %}" data-bs-dismiss="modal">OK</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="adminKwSuggestModal" tabindex="-1" aria-labelledby="adminKwSuggestModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+      <div class="modal-content tnw-modal-branded-shell {% if tnw_admin_bootstrap_light_shell %}bg-light text-dark border{% else %}bg-dark text-light border border-secondary{% endif %}">
+        {% with modal_title = 'AI keyword suggestions', modal_title_id = 'adminKwSuggestModalLabel', use_h2_title = true %}
+          {% include "partials/tnw_modal_header_branded.html" %}
+        {% endwith %}
+        <div class="modal-body" id="adminKwSuggestModalBody">
+          <p class="admin-console-footer-note small mb-0">Loading…</p>
+        </div>
+        <div class="modal-footer {% if tnw_admin_bootstrap_light_shell %}border-secondary border-opacity-25{% else %}border-secondary{% endif %}">
+          <button type="button" class="btn {% if tnw_admin_bootstrap_light_shell %}btn-primary{% else %}btn-light{% endif %}" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="adminKwSuggestApplyConfirmModal" tabindex="-1" aria-labelledby="adminKwSuggestApplyConfirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content tnw-modal-branded-shell {% if tnw_admin_bootstrap_light_shell %}bg-light text-dark border{% else %}bg-dark text-light border border-secondary{% endif %}">
+        {% with modal_title = 'Apply keyword changes', modal_title_id = 'adminKwSuggestApplyConfirmModalLabel', use_h2_title = true %}
+          {% include "partials/tnw_modal_header_branded.html" %}
+        {% endwith %}
+        <div class="modal-body" id="adminKwSuggestApplyConfirmBody"></div>
+        <div class="modal-footer {% if tnw_admin_bootstrap_light_shell %}border-secondary border-opacity-25{% else %}border-secondary{% endif %}">
+          <button type="button" class="btn {% if tnw_admin_bootstrap_light_shell %}btn-outline-secondary{% else %}btn-outline-light{% endif %}" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-success" id="adminKwSuggestApplyConfirmBtn">Confirm apply</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="adminMgKwSuggestModal" tabindex="-1" aria-labelledby="adminMgKwSuggestModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
+      <div class="modal-content tnw-modal-branded-shell {% if tnw_admin_bootstrap_light_shell %}bg-light text-dark border{% else %}bg-dark text-light border border-secondary{% endif %}">
+        {% with modal_title = 'AI keyword suggestions for event groups', modal_title_id = 'adminMgKwSuggestModalLabel', use_h2_title = true %}
+          {% include "partials/tnw_modal_header_branded.html" %}
+        {% endwith %}
+        <div class="modal-body" id="adminMgKwSuggestModalBody">
+          <p class="admin-console-footer-note small mb-0">Loading…</p>
+        </div>
+        <div class="modal-footer {% if tnw_admin_bootstrap_light_shell %}border-secondary border-opacity-25{% else %}border-secondary{% endif %}">
+          <button type="button" class="btn {% if tnw_admin_bootstrap_light_shell %}btn-outline-secondary{% else %}btn-outline-light{% endif %}" data-bs-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-success" id="adminMgKwSuggestApplyBtn" disabled>Apply selected…</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="adminMgKwApplyConfirmModal" tabindex="-1" aria-labelledby="adminMgKwApplyConfirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content tnw-modal-branded-shell {% if tnw_admin_bootstrap_light_shell %}bg-light text-dark border{% else %}bg-dark text-light border border-secondary{% endif %}">
+        {% with modal_title = 'Apply keywords to event groups', modal_title_id = 'adminMgKwApplyConfirmModalLabel', use_h2_title = true %}
+          {% include "partials/tnw_modal_header_branded.html" %}
+        {% endwith %}
+        <div class="modal-body" id="adminMgKwApplyConfirmBody"></div>
+        <div class="modal-footer {% if tnw_admin_bootstrap_light_shell %}border-secondary border-opacity-25{% else %}border-secondary{% endif %}">
+          <button type="button" class="btn {% if tnw_admin_bootstrap_light_shell %}btn-outline-secondary{% else %}btn-outline-light{% endif %}" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-success" id="adminMgKwApplyConfirmGoBtn">Confirm apply</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="adminBulkCascadeDeleteModal" tabindex="-1" aria-labelledby="adminBulkCascadeDeleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content tnw-modal-branded-shell {% if tnw_admin_bootstrap_light_shell %}bg-light text-dark border{% else %}bg-dark text-light border border-secondary{% endif %}">
+        {% with modal_title = 'Confirm bulk delete', modal_title_id = 'adminBulkCascadeDeleteModalLabel', use_h2_title = true %}
+          {% include "partials/tnw_modal_header_branded.html" %}
+        {% endwith %}
+        <div class="modal-body" id="adminBulkCascadeDeleteBody"></div>
+        <div class="modal-footer {% if tnw_admin_bootstrap_light_shell %}border-secondary border-opacity-25{% else %}border-secondary{% endif %}">
+          <button type="button" class="btn {% if tnw_admin_bootstrap_light_shell %}btn-outline-secondary{% else %}btn-outline-light{% endif %}" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-danger" form="adminBulkCascadeDeleteForm" id="adminBulkCascadeDeleteSubmit">Delete permanently</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="adminDeleteGroupEventsModal" tabindex="-1" aria-labelledby="adminDeleteGroupEventsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content tnw-modal-branded-shell {% if tnw_admin_bootstrap_light_shell %}bg-light text-dark border{% else %}bg-dark text-light border border-secondary{% endif %}">
+        {% with modal_title = 'Confirm delete events', modal_title_id = 'adminDeleteGroupEventsModalLabel', use_h2_title = true %}
+          {% include "partials/tnw_modal_header_branded.html" %}
+        {% endwith %}
+        <div class="modal-body" id="adminDeleteGroupEventsModalBody"></div>
+        <div class="modal-footer {% if tnw_admin_bootstrap_light_shell %}border-secondary border-opacity-25{% else %}border-secondary{% endif %}">
+          <button type="button" class="btn {% if tnw_admin_bootstrap_light_shell %}btn-outline-secondary{% else %}btn-outline-light{% endif %}" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-danger" id="adminDeleteGroupEventsSubmitBtn" form="adminDeleteGroupEventsForm">Delete events permanently</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="adminBulkTransferModal" tabindex="-1" aria-labelledby="adminBulkTransferModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" style="max-width: 34rem;">
+      <div class="modal-content tnw-modal-branded-shell {% if tnw_admin_bootstrap_light_shell %}bg-light text-dark border{% else %}bg-dark text-light border border-secondary{% endif %}">
+        {% with modal_title = 'Change ownership', modal_title_id = 'adminBulkTransferModalLabel', use_h2_title = true %}
+          {% include "partials/tnw_modal_header_branded.html" %}
+        {% endwith %}
+        <div class="modal-body py-3">
+          <p class="small admin-console-footer-note mb-3" id="adminBulkTransferSummary"></p>
+          <div
+            class="alert alert-danger py-2 px-3 small mb-3 d-none"
+            id="adminBulkTransferModalAlert"
+            role="alert"
+            aria-live="polite"
+          ></div>
+          <ul class="nav nav-tabs nav-tabs-sm mb-3" id="adminBulkTransferTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button
+                class="nav-link active"
+                id="transfer-tab-existing"
+                data-bs-toggle="tab"
+                data-bs-target="#transfer-pane-existing"
+                type="button"
+                role="tab"
+                aria-controls="transfer-pane-existing"
+                aria-selected="true"
+              >Existing user</button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button
+                class="nav-link"
+                id="transfer-tab-new"
+                data-bs-toggle="tab"
+                data-bs-target="#transfer-pane-new"
+                type="button"
+                role="tab"
+                aria-controls="transfer-pane-new"
+                aria-selected="false"
+              >New user</button>
+            </li>
+          </ul>
+          <div class="tab-content" id="adminBulkTransferTabContent">
+            <div
+              class="tab-pane fade show active"
+              id="transfer-pane-existing"
+              role="tabpanel"
+              aria-labelledby="transfer-tab-existing"
+              tabindex="0"
+            >
+              <div class="mb-3">
+                <label class="form-label small fw-semibold mb-1" for="adminBulkTransferUserFilter">Filter by email</label>
+                <input
+                  type="search"
+                  class="form-control form-control-sm"
+                  id="adminBulkTransferUserFilter"
+                  autocomplete="off"
+                  placeholder="Type to narrow the list…"
+                  aria-controls="adminBulkTransferTargetUserSelect"
+                >
+              </div>
+              <div class="mb-0">
+                <label class="form-label small fw-semibold mb-1" for="adminBulkTransferTargetUserSelect">New owner</label>
+                <select class="form-select form-select-sm" id="adminBulkTransferTargetUserSelect" autocomplete="off" aria-describedby="adminBulkTransferSelectFb">
+                  <option value="">Choose a user…</option>
+                  {% for u in admin_transfer_users %}
+                    <option value="{{ u.user_id }}">{{ u.email }} (ID {{ u.user_id }})</option>
+                  {% endfor %}
+                </select>
+                <div class="invalid-feedback" id="adminBulkTransferSelectFb"></div>
+              </div>
+            </div>
+            <div
+              class="tab-pane fade"
+              id="transfer-pane-new"
+              role="tabpanel"
+              aria-labelledby="transfer-tab-new"
+              tabindex="0"
+            >
+              <p class="small admin-console-footer-note mb-3 mb-md-2">
+                Creates an <strong>unverified</strong> account (no password yet). The new owner can sign in after they complete registration or password reset, if your site allows it for unverified accounts.
+              </p>
+              <div class="mb-2">
+                <label class="form-label small fw-semibold mb-1" for="adminBulkProvisionUsername">Username</label>
+                <input
+                  type="text"
+                  class="form-control form-control-sm"
+                  id="adminBulkProvisionUsername"
+                  name="admin_bulk_provision_username"
+                  autocomplete="off"
+                  maxlength="50"
+                  placeholder="5–50 characters, no spaces"
+                  aria-describedby="adminBulkProvisionUsernameFb"
+                >
+                <div class="invalid-feedback" id="adminBulkProvisionUsernameFb"></div>
+              </div>
+              <div class="mb-0">
+                <label class="form-label small fw-semibold mb-1" for="adminBulkProvisionEmail">Email</label>
+                <input
+                  type="email"
+                  class="form-control form-control-sm"
+                  id="adminBulkProvisionEmail"
+                  name="admin_bulk_provision_email"
+                  autocomplete="off"
+                  maxlength="50"
+                  placeholder="name@example.com"
+                  aria-describedby="adminBulkProvisionEmailFb"
+                >
+                <div class="invalid-feedback" id="adminBulkProvisionEmailFb"></div>
+              </div>
+            </div>
+          </div>
+          <p class="small {% if tnw_admin_bootstrap_light_shell %}text-secondary{% else %}text-white-50{% endif %} mb-0 mt-3">Selected {{ lbl_mg | lower }} and all of their events will move to this account.</p>
+        </div>
+        <div class="modal-footer py-3 gap-2 {% if tnw_admin_bootstrap_light_shell %}border-secondary border-opacity-25{% else %}border-secondary{% endif %}">
+          <button type="button" class="btn {% if tnw_admin_bootstrap_light_shell %}btn-outline-secondary{% else %}btn-outline-light{% endif %}" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary d-inline-flex align-items-center gap-2" id="adminBulkTransferReviewBtn">
+            <span id="adminBulkTransferReviewLabel">Review transfer</span>
+            <span class="spinner-border spinner-border-sm d-none" id="adminBulkTransferReviewSpinner" role="status" aria-hidden="true"></span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="adminBulkTransferConfirmModal" tabindex="-1" aria-labelledby="adminBulkTransferConfirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 26rem;">
+      <div class="modal-content tnw-modal-branded-shell {% if tnw_admin_bootstrap_light_shell %}bg-light text-dark border{% else %}bg-dark text-light border border-secondary{% endif %}">
+        {% with modal_title = 'Confirm transfer', modal_title_id = 'adminBulkTransferConfirmModalLabel', use_h2_title = true %}
+          {% include "partials/tnw_modal_header_branded.html" %}
+        {% endwith %}
+        <div class="modal-body py-3">
+          <p class="mb-2 fw-medium" id="adminBulkTransferConfirmSummary"></p>
+          <p class="small {% if tnw_admin_bootstrap_light_shell %}text-secondary{% else %}text-white-50{% endif %} mb-0">This cannot be undone from here. Check the destination account is correct.</p>
+        </div>
+        <div class="modal-footer py-3 gap-2 {% if tnw_admin_bootstrap_light_shell %}border-secondary border-opacity-25{% else %}border-secondary{% endif %}">
+          <button type="button" class="btn {% if tnw_admin_bootstrap_light_shell %}btn-outline-secondary{% else %}btn-outline-light{% endif %}" id="adminBulkTransferConfirmBack">Back</button>
+          <button type="submit" class="btn btn-primary" form="adminBulkTransferForm" id="adminBulkTransferConfirmSubmit">Confirm transfer</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% if admin_bulk_transfer_notice %}
+  <div class="modal fade" id="adminBulkTransferResultModal" tabindex="-1" aria-labelledby="adminBulkTransferResultModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 26rem;">
+      <div class="modal-content tnw-modal-branded-shell border border-success {% if tnw_admin_bootstrap_light_shell %}bg-light text-dark{% else %}bg-dark text-light{% endif %}">
+        {% with modal_title = admin_bulk_transfer_notice.title, modal_title_id = 'adminBulkTransferResultModalLabel', use_h2_title = true %}
+          {% include "partials/tnw_modal_header_branded.html" %}
+        {% endwith %}
+        <div class="modal-body py-3">
+          <p class="mb-0" id="adminBulkTransferResultBody">{{ admin_bulk_transfer_notice.body }}</p>
+        </div>
+        <div class="modal-footer py-3 border-success border-opacity-50">
+          <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <form method="post" id="adminBulkCascadeDeleteForm" action="{{ url_for('main.admin_meeting_groups_bulk_delete') }}" class="d-none" aria-hidden="true">
+    {% for rk, rv in admin_bulk_ret_fields %}
+      <input type="hidden" name="ret_{{ rk }}" value="{{ rv }}">
+    {% endfor %}
+    <div id="adminBulkCascadeDeleteIdsMount"></div>
+  </form>
+
+  <form method="post" id="adminBulkTransferForm" action="{{ url_for('main.admin_meeting_groups_bulk_transfer') }}" class="d-none" aria-hidden="true">
+    {% for rk, rv in admin_bulk_ret_fields %}
+      <input type="hidden" name="ret_{{ rk }}" value="{{ rv }}">
+    {% endfor %}
+    <input type="hidden" name="target_user_id" id="adminBulkTransferTargetUserIdHidden" value="">
+    <div id="adminBulkTransferIdsMount"></div>
+  </form>

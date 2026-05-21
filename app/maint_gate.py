@@ -41,6 +41,7 @@ _MAINT_API_ENDPOINTS = frozenset(
         "main.impersonate_start",
         "main.impersonate_stop",
         "main.set_admin_bootstrap_theme",
+        "main.set_site_bootstrap_theme",
         "main.keyword_maintenance",
         "main.topic_add",
         "main.topic_update",

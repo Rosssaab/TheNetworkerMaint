@@ -1,0 +1,177 @@
+      <div class="admin-console-panel mb-3">
+        <h2 class="h5 mb-2">Move {{ lbl_mt | lower }} to another {{ lbl_mg | lower }}</h2>
+        <ol class="small admin-console-footer-note mb-3 ps-3">
+          <li class="mb-1">Enter part of the <strong>event title</strong> and press <strong>Search events</strong>.</li>
+          <li class="mb-1">In the grid, tick the <strong>events</strong> you want to move.</li>
+          <li class="mb-1">Enter part of the <strong>destination {{ lbl_mg | lower }} title</strong> and press <strong>Search groups</strong> — then pick one group from the list.</li>
+          <li class="mb-1">Press <strong>Move event(s)</strong>, confirm in the dialog, then start again on the cleared page.</li>
+        </ol>
+        <div class="row g-3 align-items-stretch">
+          <div class="col-12 col-lg-6">
+            <div class="admin-console-surface border border-secondary border-opacity-25 rounded h-100 d-flex flex-column">
+              <div class="px-3 py-2 border-bottom border-secondary border-opacity-25">
+                <span class="small text-uppercase fw-semibold" style="color: var(--ac-muted); letter-spacing: 0.06em;">Find {{ lbl_mt | lower }}</span>
+              </div>
+              <div class="p-3 d-flex flex-column flex-grow-1">
+                <form id="adminMoveEventsFilterForm" class="mb-0" method="get" action="{{ url_for('main.admin_move_events') }}">
+                  <input type="hidden" name="ignore_test_users" id="adminMoveIgnoreTestHidden" value="{{ '0' if request.args.get('ignore_test_users') == '0' else '1' }}">
+                  <div class="form-check mb-2">
+                    <input type="checkbox" class="form-check-input" id="adminMoveIgnoreTestCb" {% if request.args.get('ignore_test_users') != '0' %}checked{% endif %}>
+                    <label class="form-check-label small text-nowrap" for="adminMoveIgnoreTestCb">Ignore test users</label>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label mb-0" for="adminMoveTitleQ">Event title contains</label>
+                    <input class="form-control form-control-sm" id="adminMoveTitleQ" name="mv_title_q" value="{{ request.args.get('mv_title_q', '') }}" maxlength="180" autocomplete="off" minlength="2" placeholder="At least 2 characters to search">
+                  </div>
+                  <div class="d-flex flex-wrap align-items-center gap-2">
+                    <button type="submit" class="btn btn-primary btn-sm" id="adminMoveSearchEventsBtn">
+                      <span class="admin-move-events-search-label">Search events</span>
+                      <span class="spinner-border spinner-border-sm d-none ms-1 admin-move-events-search-spinner" role="status" aria-hidden="true"></span>
+                    </button>
+                    <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('main.admin_move_events', **admin_ignore_test_users_nav) }}">Clear form</a>
+                  </div>
+                </form>
+                {% if not admin_move_events_title_ok %}
+                <p class="small admin-console-footer-note mb-0 mt-3 pt-3 border-top border-secondary border-opacity-25">
+                  Enter at least <strong>two characters</strong> of the event title and click <strong>Search events</strong>.
+                </p>
+                {% else %}
+                <div class="mt-3 pt-3 border-top border-secondary border-opacity-25 flex-grow-1 d-flex flex-column min-h-0">
+                  <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                    <span class="small text-uppercase fw-semibold" style="color: var(--ac-muted); letter-spacing: 0.06em;">Matching {{ lbl_mt | lower }}</span>
+                    <span class="small admin-console-footer-note">
+                      {{ admin_move_events_rows|length }} of {{ admin_move_events_total }} (p. {{ admin_move_events_page }}/{{ admin_move_events_pages }})
+                    </span>
+                  </div>
+                  <div class="table-responsive flex-grow-1 min-h-0">
+                    <table class="table table-sm admin-console-table admin-console-table--dense align-middle mb-0">
+                      <thead>
+                        <tr>
+                          <th scope="col">ID</th>
+                          <th scope="col">Title</th>
+                          <th scope="col">Status</th>
+                          <th scope="col">Starts</th>
+                          <th scope="col">Current {{ lbl_mg | lower }}</th>
+                          <th scope="col" class="text-end">
+                            <span class="visually-hidden" id="adminMoveSelectAllLabel">Select all on this page</span>
+                            <input type="checkbox" class="form-check-input m-0" id="adminMoveSelectAll" title="Select all on this page" aria-labelledby="adminMoveSelectAllLabel">
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {% for m in admin_move_events_rows %}
+                        {% set mg = m.meeting_group %}
+                        {% set mo = mg.owner if mg else none %}
+                        <tr>
+                          <td class="text-secondary small">{{ m.meeting_id }}</td>
+                          <td class="small fw-medium">{{ m.title | decode_html_entities }}</td>
+                          <td class="small">{% if m.status == 'Live' %}<span class="badge rounded-pill admin-console-badge-live">Live</span>{% elif m.status == 'Draft' %}<span class="badge rounded-pill admin-console-badge-draft">Draft</span>{% else %}<span class="badge bg-secondary bg-opacity-25">{{ m.status | e }}</span>{% endif %}</td>
+                          <td class="small text-secondary text-nowrap">{{ m.starts_at.strftime('%Y-%m-%d %H:%M') if m.starts_at else '—' }}</td>
+                          <td class="small">{{ (mg.meeting_group_name | decode_html_entities) if mg else '—' }} <span class="text-secondary">(#{{ mg.meeting_group_id if mg else '—' }})</span></td>
+                          <td class="text-end">
+                            <input type="checkbox" class="form-check-input m-0 js-admin-move-mtg-cb" value="{{ m.meeting_id }}" aria-label="Select event {{ m.meeting_id }}">
+                          </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                          <td colspan="6" class="text-center py-4 admin-console-footer-note">No {{ lbl_mt | lower }} match these filters.</td>
+                        </tr>
+                        {% endfor %}
+                      </tbody>
+                    </table>
+                  </div>
+                  {% if admin_move_events_pagination.pages > 1 %}
+                  <nav class="pt-2 mt-auto border-top border-secondary border-opacity-25" aria-label="Move events pagination">
+                    <ul class="pagination pagination-sm mb-0 flex-wrap">
+                      {% if admin_move_events_pagination.has_prev %}
+                      <li class="page-item">
+                        <a class="page-link" href="{{ url_for('main.admin_move_events', mv_page=admin_move_events_pagination.prev_num, **admin_move_events_nav_kwargs) }}">Previous</a>
+                      </li>
+                      {% endif %}
+                      {% for p in admin_move_events_pagination.iter_pages() %}
+                        {% if p %}
+                          <li class="page-item{% if p == admin_move_events_page %} active{% endif %}">
+                            <a class="page-link" href="{{ url_for('main.admin_move_events', mv_page=p, **admin_move_events_nav_kwargs) }}">{{ p }}</a>
+                          </li>
+                        {% else %}
+                          <li class="page-item disabled"><span class="page-link">…</span></li>
+                        {% endif %}
+                      {% endfor %}
+                      {% if admin_move_events_pagination.has_next %}
+                      <li class="page-item">
+                        <a class="page-link" href="{{ url_for('main.admin_move_events', mv_page=admin_move_events_pagination.next_num, **admin_move_events_nav_kwargs) }}">Next</a>
+                      </li>
+                      {% endif %}
+                    </ul>
+                  </nav>
+                  {% endif %}
+                </div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+
+          <div class="col-12 col-lg-6">
+            <div class="admin-console-surface border border-secondary border-opacity-25 rounded h-100 d-flex flex-column">
+              <div class="px-3 py-2 border-bottom border-secondary border-opacity-25">
+                <span class="small text-uppercase fw-semibold" style="color: var(--ac-muted); letter-spacing: 0.06em;">Destination {{ lbl_mg | lower }}</span>
+              </div>
+              <div class="p-3 flex-grow-1 d-flex flex-column">
+                {% if not admin_move_events_title_ok %}
+                <p class="small admin-console-footer-note mb-0">
+                  Run <strong>Search events</strong> on the left to load matching {{ lbl_mt | lower }}. Then search for a destination {{ lbl_mg | lower }} here.
+                </p>
+                {% else %}
+                <div class="mb-0">
+                  <label class="form-label small fw-semibold mb-1" for="adminMoveDestGroupTitleQ">{{ lbl_mg }} title contains</label>
+                  <input type="text" class="form-control form-control-sm mb-2" id="adminMoveDestGroupTitleQ" maxlength="120" autocomplete="off" placeholder="e.g. part of the group name">
+                  <div class="d-flex flex-wrap align-items-center gap-2">
+                    <button type="button" class="btn btn-outline-primary btn-sm" id="adminMoveSearchGroupsBtn">
+                      <span class="admin-move-search-label">Search groups</span>
+                      <span class="spinner-border spinner-border-sm d-none ms-1 admin-move-search-spinner" role="status" aria-hidden="true"></span>
+                    </button>
+                    <button type="button" class="btn btn-primary btn-sm" id="adminMoveEventsStartBtn">
+                      <span class="admin-move-start-label">Move event(s)</span>
+                    </button>
+                  </div>
+                </div>
+                <div id="adminMoveDestResultsWrap" class="d-none mt-3 pt-3 border-top border-secondary border-opacity-25">
+                  <h3 class="h6 text-uppercase admin-console-footer-note mb-2" style="letter-spacing: 0.06em;">Matching {{ lbl_mg | lower }}</h3>
+                  <div id="adminMoveDestResultsList" class="vstack gap-1 border rounded p-2 bg-body" style="max-height: 18rem; overflow-y: auto;"></div>
+                  <p class="small admin-console-footer-note mb-0 mt-2 d-none" id="adminMoveDestResultsHint"></p>
+                </div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+    <form method="post" id="adminMoveEventsForm" action="{{ url_for('main.admin_meetings_move_to_group') }}" class="d-none" aria-hidden="true">
+    <input type="hidden" name="target_meeting_group_id" id="adminMoveTargetGroupIdHidden" value="">
+    <div id="adminMoveMeetingIdsMount"></div>
+  </form>
+
+  <div class="modal fade" id="adminMoveEventsConfirmModal" tabindex="-1" aria-labelledby="adminMoveEventsConfirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 28rem;">
+      <div class="modal-content tnw-modal-branded-shell {% if tnw_admin_bootstrap_light_shell %}bg-light text-dark border{% else %}bg-dark text-light border border-secondary{% endif %}">
+        {% with modal_title = 'Confirm move', modal_title_id = 'adminMoveEventsConfirmModalLabel', use_h2_title = true %}
+          {% include "partials/tnw_modal_header_branded.html" %}
+        {% endwith %}
+        <div class="modal-body py-3">
+          <p class="mb-2 fw-medium" id="adminMoveEventsConfirmSummary"></p>
+          <p class="small {% if tnw_admin_bootstrap_light_shell %}text-secondary{% else %}text-white-50{% endif %} mb-0" id="adminMoveEventsConfirmFootnote">Events will list under that {{ lbl_mg | lower }}. The organiser (creator) field is unchanged unless you use <strong>Change ownership</strong> on the overview tab.</p>
+        </div>
+        <div class="modal-footer py-3 gap-2 {% if tnw_admin_bootstrap_light_shell %}border-secondary border-opacity-25{% else %}border-secondary{% endif %}">
+          <button type="button" class="btn {% if tnw_admin_bootstrap_light_shell %}btn-outline-secondary{% else %}btn-outline-light{% endif %}" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" id="adminMoveEventsConfirmSubmit">
+            <span class="admin-move-confirm-label">Confirm move</span>
+            <span class="spinner-border spinner-border-sm d-none ms-1 admin-move-confirm-spinner" role="status" aria-hidden="true"></span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+

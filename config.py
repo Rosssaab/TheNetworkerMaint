@@ -7,8 +7,12 @@ load_dotenv()
 class Config:
     # Admin maint console (separate deploy from public site).
     TNW_MAINT_APP = True
+    TNW_MAINT_LOGIN_USER_1 = (os.getenv("TNW_MAINT_LOGIN_USER_1") or "").strip()
+    TNW_MAINT_LOGIN_PASSWORD_1 = os.getenv("TNW_MAINT_LOGIN_PASSWORD_1") or ""
+    TNW_MAINT_LOGIN_USER_2 = (os.getenv("TNW_MAINT_LOGIN_USER_2") or "").strip()
+    TNW_MAINT_LOGIN_PASSWORD_2 = os.getenv("TNW_MAINT_LOGIN_PASSWORD_2") or ""
     # Semver shown in site footer. Patch: PushToMain.bat | minor: PushToStaging.bat
-    APP_VERSION = "1.29.0-maint"
+    APP_VERSION = "1.29.1-maint"
     SECRET_KEY = os.getenv("SECRET_KEY", "dev-change-me")
     SQLALCHEMY_DATABASE_URI = os.getenv(
         "DATABASE_URL",

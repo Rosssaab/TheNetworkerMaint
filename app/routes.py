@@ -74,6 +74,16 @@ from flask import (
     url_for,
 )
 
+from .env_auth import (
+    SESSION_MAINT_ENV_IMPERSONATOR,
+    SESSION_MAINT_ENV_USER,
+    clear_maint_env_session_keys,
+    get_maint_env_impersonator_user,
+    get_maint_env_session_user,
+    maint_env_login_configured,
+    session_has_maint_env_auth,
+    verify_maint_env_login,
+)
 from .bootstrap_themes import (
     TNW_ADMIN_BOOTSTRAP_THEME_COOKIE,
     TNW_ADMIN_BOOTSTRAP_THEME_SESSION,
@@ -82,6 +92,11 @@ from .bootstrap_themes import (
     bootstrap_theme_stylesheet_url,
     normalize_bootstrap_theme_slug,
     resolve_admin_bootstrap_theme_slug,
+    resolve_site_bootstrap_theme_slug,
+    resolve_bootstrap_theme_slug,
+    bootstrap_theme_is_bootswatch,
+    TNW_SITE_BOOTSTRAP_THEME_COOKIE,
+    TNW_SITE_BOOTSTRAP_THEME_SESSION,
 )
 from .tnw_feature_flags import tnw_migration_notice_response_or_none
 from .models import (
@@ -119,10 +134,14 @@ def _tnw_commit_event_listing_record(
     commit_event_listing_record(user_id, meeting_id, previous_status)
 
 
+def _session_is_signed_in():
+    return bool(session.get("user_id") or session_has_maint_env_auth())
+
+
 def login_required(view):
     @wraps(view)
     def wrapped(*args, **kwargs):
-        if not session.get("user_id"):
+        if not _session_is_signed_in():
             flash("Please sign in to continue.", "info")
             path = request.path or ""
             if path in ("/login", "/register", "/login/twofa"):
@@ -141,7 +160,7 @@ def site_admin_required(view):
 
     @wraps(view)
     def wrapped(*args, **kwargs):
-        if not session.get("user_id"):
+        if not _session_is_signed_in():
             flash("Please sign in to continue.", "info")
             path = request.path or ""
             if path in ("/login", "/register", "/login/twofa"):
@@ -248,7 +267,13 @@ def _admin_session_user_id():
 
 
 def _session_site_admin_user():
-    """Return the ``User`` row for the acting admin, or None if not a site admin."""
+    """Return the acting site admin (DB ``User`` or env maint account), or None."""
+    imp = get_maint_env_impersonator_user()
+    if imp:
+        return imp
+    env_user = get_maint_env_session_user()
+    if env_user:
+        return env_user
     uid = _admin_session_user_id()
     if not uid:
         return None
@@ -261,6 +286,7 @@ def _session_site_admin_user():
 def _session_clear_login():
     session.pop("user_id", None)
     session.pop(SESSION_IMPERSONATOR_ADMIN_ID, None)
+    clear_maint_env_session_keys()
     session.pop("pending_twofa_user_id", None)
     session.pop(SESSION_POST_LOGIN_NEXT, None)
 
@@ -626,19 +652,23 @@ def _fix_utf8_mojibake_from_cp1252(s: str | None) -> str:
 # Context processor
 # ---------------------------------------------------------------------------
 # Templates reference `current_user` (e.g. `{% if current_user %}` in base.html).
-# The old implementation queried the users table. It now returns None until
-# authentication is rebuilt against the new schema.
+# Maint app: env-configured operators; otherwise loads from ``users`` when signed in.
 
 
 @bp.app_context_processor
 def inject_user():
     uid = session.get("user_id")
     user = User.query.get(uid) if uid else None
+    if not user:
+        user = get_maint_env_session_user()
     imp_id = session.get(SESSION_IMPERSONATOR_ADMIN_ID)
+    imp_env = session.get(SESSION_MAINT_ENV_IMPERSONATOR)
     if imp_id:
         real_admin_user = User.query.get(imp_id)
+    elif imp_env:
+        real_admin_user = get_maint_env_impersonator_user()
     else:
-        real_admin_user = user if (user and user.admin_user) else None
+        real_admin_user = user if (user and getattr(user, "admin_user", False)) else None
     nav_has_saved_meetings = False
     if uid:
         nav_has_saved_meetings = (
@@ -646,31 +676,53 @@ def inject_user():
         )
     return {
         "current_user": user,
-        "impersonating": bool(imp_id),
+        "impersonating": bool(imp_id or imp_env),
         "real_admin_user": real_admin_user,
         "nav_has_saved_meetings": nav_has_saved_meetings,
+        "tnw_maint_app": bool(current_app.config.get("TNW_MAINT_APP")),
     }
+
+
+def _persist_bootstrap_theme(slug: str, response):
+    """Store one theme choice for the whole app (session + cookies)."""
+    session[TNW_SITE_BOOTSTRAP_THEME_SESSION] = slug
+    session[TNW_ADMIN_BOOTSTRAP_THEME_SESSION] = slug
+    for cookie_name in (
+        TNW_SITE_BOOTSTRAP_THEME_COOKIE,
+        TNW_ADMIN_BOOTSTRAP_THEME_COOKIE,
+    ):
+        response.set_cookie(
+            cookie_name,
+            slug,
+            max_age=60 * 60 * 24 * 400,
+            samesite="Lax",
+            secure=bool(getattr(request, "is_secure", False)),
+            path="/",
+        )
+    return response
 
 
 @bp.app_context_processor
 def inject_admin_bootstrap_theme():
-    # Admin functions uses admin_base without the theme picker bar; always use
-    # stock Bootstrap here so Bootswatch from an old session/cookie cannot hide
-    # controls (e.g. checkboxes) behind an unintended skin.
-    if request.endpoint == "main.admin_events":
-        slug = "default"
-    else:
-        slug = resolve_admin_bootstrap_theme_slug(
-            session.get(TNW_ADMIN_BOOTSTRAP_THEME_SESSION),
-            request.cookies.get(TNW_ADMIN_BOOTSTRAP_THEME_COOKIE),
-        )
+    theme_choices = [{"id": sid, "label": lab} for sid, lab in TNW_BOOTSTRAP_THEMES]
+    slug = resolve_bootstrap_theme_slug(
+        session.get(TNW_SITE_BOOTSTRAP_THEME_SESSION),
+        request.cookies.get(TNW_SITE_BOOTSTRAP_THEME_COOKIE),
+        session.get(TNW_ADMIN_BOOTSTRAP_THEME_SESSION),
+        request.cookies.get(TNW_ADMIN_BOOTSTRAP_THEME_COOKIE),
+    )
+    bootswatch = bootstrap_theme_is_bootswatch(slug)
     return {
+        "tnw_site_bootstrap_theme": slug,
+        "tnw_site_bootstrap_theme_href": bootstrap_theme_stylesheet_url(slug),
+        "tnw_site_bootstrap_theme_choices": theme_choices,
         "tnw_admin_bootstrap_theme": slug,
         "tnw_admin_bootstrap_theme_href": bootstrap_theme_stylesheet_url(slug),
-        "tnw_admin_bootstrap_theme_choices": [
-            {"id": sid, "label": lab} for sid, lab in TNW_BOOTSTRAP_THEMES
-        ],
+        "tnw_admin_bootstrap_theme_choices": theme_choices,
+        "tnw_bootswatch_theme_active": bootswatch,
         "tnw_admin_bootstrap_light_shell": admin_bootstrap_uses_light_shell(slug),
+        "tnw_bootstrap_theme_choices": theme_choices,
+        "tnw_bootstrap_theme": slug,
     }
 
 
@@ -809,6 +861,10 @@ _PROFILE_GATE_ALLOWED_ENDPOINTS = {
     "main.meeting_group_contact_organiser",
     "main.admin_preview",
     "main.admin_events",
+    "main.admin_keywords",
+    "main.admin_users",
+    "main.admin_move_events",
+    "main.admin_delete_group_events",
     "main.admin_meeting_group_image_replace",
     "main.admin_meeting_groups_bulk_delete",
     "main.admin_meeting_groups_bulk_transfer",
@@ -5772,7 +5828,7 @@ def meeting_group_admin_transfer():
 
     def _transfer_redirect(**dashboard_kwargs):
         if from_admin_console:
-            return redirect(url_for("main.admin_events", panel="overview"))
+            return redirect(url_for("main.admin_events"))
         return redirect(
             url_for(
                 "main.platform_dashboard",
@@ -5917,11 +5973,11 @@ def admin_meeting_groups_bulk_transfer():
 
 
 def _admin_move_events_redirect_clean():
-    """After moving events (or cancel path): open Move events tab with an empty form."""
-    q: dict = {"panel": "move_events"}
+    """After moving events (or cancel path): open Move events page with an empty form."""
+    q: dict = {}
     if not _admin_should_hide_test_users():
         q["ignore_test_users"] = "0"
-    return redirect(url_for("main.admin_events", **q))
+    return redirect(url_for("main.admin_move_events", **q))
 
 
 @bp.route("/admin/meeting-groups/lookup-for-move", methods=["GET"])
@@ -7902,9 +7958,40 @@ def admin_meeting_groups_apply_tag_suggestions():
     return jsonify(ok=True, applied=applied, notes=notes)
 
 
-_ADMIN_THEME_PANELS = frozenset(
-    {"overview", "keywords", "more", "users", "move_events"}
+_ADMIN_FUNCTION_PANELS = frozenset(
+    {"overview", "keywords", "users", "move_events", "delete_group_events"}
 )
+_ADMIN_PANEL_ENDPOINTS: dict[str, str] = {
+    "overview": "admin_events",
+    "keywords": "admin_keywords",
+    "users": "admin_users",
+    "move_events": "admin_move_events",
+    "delete_group_events": "admin_delete_group_events",
+}
+_ADMIN_PANEL_TEMPLATES: dict[str, str] = {
+    "overview": "admin/overview.html",
+    "keywords": "admin/keywords.html",
+    "users": "admin/users.html",
+    "move_events": "admin/move_events.html",
+    "delete_group_events": "admin/delete_group_events.html",
+}
+_ADMIN_FUNCTION_ENDPOINTS = frozenset(
+    f"main.{ep}" for ep in _ADMIN_PANEL_ENDPOINTS.values()
+)
+
+
+def _admin_redirect_for_panel(panel: str, **kwargs):
+    """Redirect legacy ``?panel=`` URLs to dedicated admin pages."""
+    panel = (panel or "overview").strip().lower()
+    if panel == "transfer":
+        panel = "overview"
+    if panel == "more":
+        panel = "keywords"
+    if panel not in _ADMIN_FUNCTION_PANELS:
+        panel = "overview"
+    clean = {k: v for k, v in kwargs.items() if k != "panel" and v is not None}
+    endpoint = _ADMIN_PANEL_ENDPOINTS[panel]
+    return redirect(url_for(f"main.{endpoint}", **clean))
 
 
 def _admin_group_meeting_stats_by_ids(gids: list[int]) -> dict[int, dict[str, int]]:
@@ -8030,18 +8117,13 @@ def _admin_bulk_redirect_from_form():
             q[key] = int(str(raw).strip())
         except ValueError:
             continue
-    panel = (q.get("panel") or "overview").strip().lower()
-    if panel == "more":
-        panel = "keywords"
-    if panel not in _ADMIN_THEME_PANELS:
-        panel = "overview"
-    q["panel"] = panel
-    return redirect(url_for("main.admin_events", **q))
+    panel = (q.pop("panel", None) or "overview").strip().lower()
+    return _admin_redirect_for_panel(panel, **q)
 
 
 def _admin_users_redirect_from_form():
-    """Rebuild admin events URL (users panel) from hidden ``ret_*`` POST fields."""
-    q: dict = {"panel": "users"}
+    """Rebuild admin users page URL from hidden ``ret_*`` POST fields."""
+    q: dict = {}
     for key in (
         "user_q",
         "user_email_q",
@@ -8064,12 +8146,12 @@ def _admin_users_redirect_from_form():
             q["users_page"] = int(str(raw_page).strip())
         except ValueError:
             pass
-    return redirect(url_for("main.admin_events", **q))
+    return redirect(url_for("main.admin_users", **q))
 
 
 def _admin_users_nav_kwargs_from_request_args() -> dict:
     """Query args that round-trip the users grid (for edit back-links and redirects)."""
-    out: dict = {"panel": "users"}
+    out: dict = {}
     for key in (
         "user_q",
         "user_email_q",
@@ -8327,28 +8409,25 @@ def _admin_delete_events_for_group(meeting_group_id: int) -> int:
     return _admin_delete_meetings_by_ids(meeting_ids)
 
 
+@bp.route("/preferences/bootstrap-theme", methods=["POST"])
+def set_site_bootstrap_theme():
+    """Persist Bootswatch/Bootstrap choice site-wide (session + cookies)."""
+    slug = normalize_bootstrap_theme_slug(request.form.get("theme"))
+    return_to = (request.form.get("return_to") or "").strip()
+    if not return_to.startswith("/"):
+        return_to = url_for("main.home")
+    return _persist_bootstrap_theme(slug, redirect(return_to))
+
+
 @bp.route("/admin/preferences/bootstrap-theme", methods=["POST"])
 @site_admin_required
 def set_admin_bootstrap_theme():
-    """Persist Bootswatch/Bootstrap choice for admin console pages (session + cookie)."""
+    """Same site-wide theme store (admin header posts here for compatibility)."""
     slug = normalize_bootstrap_theme_slug(request.form.get("theme"))
-    session[TNW_ADMIN_BOOTSTRAP_THEME_SESSION] = slug
-    panel = (request.form.get("panel") or "overview").strip().lower()
-    if panel == "more":
-        panel = "keywords"
-    if panel not in _ADMIN_THEME_PANELS:
-        panel = "overview"
-    resp = redirect(url_for("main.admin_events", panel=panel))
-    resp.set_cookie(
-        TNW_ADMIN_BOOTSTRAP_THEME_COOKIE,
-        slug,
-        max_age=60 * 60 * 24 * 400,
-        samesite="Lax",
-        secure=bool(getattr(request, "is_secure", False)),
-        path="/",
-    )
-    flash("Admin theme updated.", "success")
-    return resp
+    return_to = (request.form.get("return_to") or "").strip()
+    if not return_to.startswith("/"):
+        return_to = url_for("main.admin_events")
+    return _persist_bootstrap_theme(slug, redirect(return_to))
 
 
 # ---------------------------------------------------------------------------
@@ -8374,7 +8453,41 @@ def admin_preview():
 @bp.route("/admin/events")
 @site_admin_required
 def admin_events():
-    """Admin console: meeting groups overview, bulk tools, and platform stats."""
+    """Event groups overview and bulk admin tools."""
+    legacy_panel = (request.args.get("panel") or "").strip().lower()
+    if legacy_panel and legacy_panel not in ("overview", ""):
+        q = request.args.to_dict()
+        q.pop("panel", None)
+        return _admin_redirect_for_panel(legacy_panel, **q)
+    return _admin_functions_render("overview")
+
+
+@bp.route("/admin/keywords")
+@site_admin_required
+def admin_keywords():
+    return _admin_functions_render("keywords")
+
+
+@bp.route("/admin/users")
+@site_admin_required
+def admin_users():
+    return _admin_functions_render("users")
+
+
+@bp.route("/admin/move-events")
+@site_admin_required
+def admin_move_events():
+    return _admin_functions_render("move_events")
+
+
+@bp.route("/admin/delete-group-events")
+@site_admin_required
+def admin_delete_group_events():
+    return _admin_functions_render("delete_group_events")
+
+
+def _admin_functions_render(active_panel: str):
+    """Shared context for admin console pages (one panel per URL)."""
     imp_id = session.get(SESSION_IMPERSONATOR_ADMIN_ID)
     if imp_id:
         viewed_uid = session.get("user_id")
@@ -8407,18 +8520,7 @@ def admin_events():
         if st not in ("Draft", "Live")
     ]
 
-    active_panel = (request.args.get("panel") or "overview").strip().lower()
-    if active_panel == "transfer":
-        active_panel = "overview"
-    if active_panel == "more":
-        active_panel = "keywords"
-    if active_panel not in (
-        "overview",
-        "keywords",
-        "users",
-        "move_events",
-        "delete_group_events",
-    ):
+    if active_panel not in _ADMIN_FUNCTION_PANELS:
         active_panel = "overview"
 
     admin_kw_topics = (
@@ -8533,7 +8635,7 @@ def admin_events():
         else:
             admin_sort_next_dir[col] = "desc"
 
-    admin_overview_nav_kwargs: dict = {"panel": "overview"}
+    admin_overview_nav_kwargs: dict = {}
     if group_q:
         admin_overview_nav_kwargs["group_q"] = group_q
     if email_q:
@@ -8594,12 +8696,12 @@ def admin_events():
     admin_users_page = 1
     admin_users_pages = 1
     admin_users_per_page = 30
-    admin_users_nav_kwargs: dict = {"panel": "users"}
+    admin_users_nav_kwargs: dict = {}
     admin_users_nav_kwargs.update(admin_ignore_test_users_nav)
     admin_users_sort_key = "created"
     admin_users_sort_dir = "desc"
     admin_users_sort_urls: dict[str, str] = {}
-    admin_users_ret_fields: list[tuple[str, str]] = [("panel", "users")]
+    admin_users_ret_fields: list[tuple[str, str]] = []
     admin_users_pagination = _AdminEventsPagination(0, 1, admin_users_per_page)
 
     if active_panel == "users":
@@ -8730,7 +8832,7 @@ def admin_events():
 
         admin_users_sort_urls = {
             col: url_for(
-                "main.admin_events",
+                "main.admin_users",
                 **{
                     **admin_users_nav_kwargs,
                     "users_page": 1,
@@ -8794,7 +8896,7 @@ def admin_events():
             admin_users_ret_fields.append((k, vs))
         admin_users_ret_fields.append(("users_page", str(admin_users_page)))
     else:
-        _uku: dict = {"panel": "users", "usort": admin_users_sort_key, "udir": admin_users_sort_dir}
+        _uku: dict = {"usort": admin_users_sort_key, "udir": admin_users_sort_dir}
         if not _admin_should_hide_test_users():
             _uku["ignore_test_users"] = "0"
 
@@ -8823,7 +8925,7 @@ def admin_events():
                 _snd_u[_col] = "desc"
         admin_users_sort_urls = {
             _col: url_for(
-                "main.admin_events",
+                "main.admin_users",
                 **{**_uku, "users_page": 1, "usort": _col, "udir": _snd_u[_col]},
             )
             for _col in (
@@ -8844,7 +8946,7 @@ def admin_events():
     admin_event_images_page = 1
     admin_event_images_pages = 1
     admin_event_images_per_page = 24
-    admin_event_images_nav_kwargs: dict = {"panel": "event_images"}
+    admin_event_images_nav_kwargs: dict = {}
     admin_event_images_nav_kwargs.update(admin_ignore_test_users_nav)
     admin_event_images_pagination = _AdminEventsPagination(
         0, 1, admin_event_images_per_page
@@ -8855,7 +8957,7 @@ def admin_events():
     admin_move_events_page = 1
     admin_move_events_pages = 1
     admin_move_events_per_page = 40
-    admin_move_events_nav_kwargs: dict = {"panel": "move_events"}
+    admin_move_events_nav_kwargs: dict = {}
     admin_move_events_nav_kwargs.update(admin_ignore_test_users_nav)
     admin_move_events_title_ok = False
     admin_move_events_pagination = _AdminEventsPagination(
@@ -8907,7 +9009,7 @@ def admin_events():
 
         admin_move_events_title_ok = len(mv_title_q) >= 2
 
-        admin_move_events_nav_kwargs = {"panel": "move_events"}
+        admin_move_events_nav_kwargs = {}
         if not _admin_should_hide_test_users():
             admin_move_events_nav_kwargs["ignore_test_users"] = "0"
         if mv_title_q:
@@ -8959,12 +9061,13 @@ def admin_events():
             )
 
     return render_template(
-        "admin_events.html",
+        _ADMIN_PANEL_TEMPLATES[active_panel],
         total_meetings=total_meetings,
         total_meeting_groups=total_meeting_groups,
         status_counts=status_counts,
         other_status_totals=other_status_totals,
         active_panel=active_panel,
+        admin_nav_active=active_panel,
         admin_transfer_users=admin_transfer_users,
         admin_overview_rows=admin_overview_rows,
         admin_ov_total=total_filtered,
@@ -9024,13 +9127,13 @@ def admin_meeting_group_delete_events():
     if not meeting_group_id:
         flash("Choose a valid event group first.", "warning")
         return redirect(
-            url_for("main.admin_events", panel="delete_group_events")
+            url_for("main.admin_delete_group_events")
         )
     mg = MeetingGroup.query.get(meeting_group_id)
     if not mg:
         flash("That event group was not found.", "warning")
         return redirect(
-            url_for("main.admin_events", panel="delete_group_events")
+            url_for("main.admin_delete_group_events")
         )
     selected_meeting_ids = request.form.getlist("meeting_ids", type=int) or []
     selected_meeting_ids = [mid for mid in selected_meeting_ids if mid]
@@ -9038,8 +9141,7 @@ def admin_meeting_group_delete_events():
         flash("Select at least one event to delete.", "warning")
         return redirect(
             url_for(
-                "main.admin_events",
-                panel="delete_group_events",
+                "main.admin_delete_group_events",
                 del_group_id=meeting_group_id,
             )
         )
@@ -9054,8 +9156,7 @@ def admin_meeting_group_delete_events():
         flash("No valid events were selected for this group.", "warning")
         return redirect(
             url_for(
-                "main.admin_events",
-                panel="delete_group_events",
+                "main.admin_delete_group_events",
                 del_group_id=meeting_group_id,
             )
         )
@@ -9070,8 +9171,7 @@ def admin_meeting_group_delete_events():
         )
         return redirect(
             url_for(
-                "main.admin_events",
-                panel="delete_group_events",
+                "main.admin_delete_group_events",
                 del_group_id=meeting_group_id,
             )
         )
@@ -9090,8 +9190,7 @@ def admin_meeting_group_delete_events():
         }
     return redirect(
         url_for(
-            "main.admin_events",
-            panel="delete_group_events",
+            "main.admin_delete_group_events",
             del_group_id=meeting_group_id,
         )
     )
@@ -9275,12 +9374,12 @@ def admin_user_edit_data(user_id: int):
 def admin_user_edit(user_id: int):
     user = User.query.get_or_404(user_id)
     nav_kwargs = _admin_users_nav_kwargs_from_request_args()
-    back_url = url_for("main.admin_events", **nav_kwargs)
+    back_url = url_for("main.admin_users", **nav_kwargs)
 
     if request.method == "GET":
         q = dict(nav_kwargs)
         q["edit_user"] = user_id
-        return redirect(url_for("main.admin_events", **q))
+        return redirect(url_for("main.admin_users", **q))
 
     pj = _admin_user_edit_prefers_json()
     nav_kwargs = {}
@@ -9295,8 +9394,7 @@ def admin_user_edit(user_id: int):
             nav_kwargs["users_page"] = int(str(raw_page).strip())
         except ValueError:
             pass
-    nav_kwargs["panel"] = "users"
-    back_url = url_for("main.admin_events", **nav_kwargs)
+    back_url = url_for("main.admin_users", **nav_kwargs)
 
     username = (request.form.get("username") or "").strip()[:50]
     email = (request.form.get("email") or "").strip()[:50]
@@ -9310,7 +9408,7 @@ def admin_user_edit(user_id: int):
         if pj:
             return jsonify(ok=False, error=msg), status
         flash(msg, "danger")
-        return redirect(url_for("main.admin_events", **{**nav_kwargs, "edit_user": user_id}))
+        return redirect(url_for("main.admin_users", **{**nav_kwargs, "edit_user": user_id}))
 
     if not username:
         return _fail("Username is required.")
@@ -9441,7 +9539,17 @@ def impersonate_start():
         flash("That user was not found.", "danger")
         return redirect(url_for("main.home"))
 
-    session[SESSION_IMPERSONATOR_ADMIN_ID] = admin.user_id
+    if getattr(admin, "user_id", None):
+        session[SESSION_IMPERSONATOR_ADMIN_ID] = admin.user_id
+        session.pop(SESSION_MAINT_ENV_USER, None)
+    else:
+        maint_name = session.get(SESSION_MAINT_ENV_USER)
+        if not maint_name:
+            flash("Could not start impersonation.", "danger")
+            return redirect(url_for("main.home"))
+        session[SESSION_MAINT_ENV_IMPERSONATOR] = maint_name
+        session.pop(SESSION_MAINT_ENV_USER, None)
+        session.pop(SESSION_IMPERSONATOR_ADMIN_ID, None)
     session["user_id"] = target.user_id
     flash(f"You are now viewing the site as {target.email}.", "info")
     return redirect(url_for("main.home"))
@@ -9451,10 +9559,16 @@ def impersonate_start():
 @login_required
 def impersonate_stop():
     imp_id = session.get(SESSION_IMPERSONATOR_ADMIN_ID)
-    if not imp_id:
+    imp_env = session.get(SESSION_MAINT_ENV_IMPERSONATOR)
+    if not imp_id and not imp_env:
         return redirect(url_for("main.home"))
-    session["user_id"] = imp_id
-    session.pop(SESSION_IMPERSONATOR_ADMIN_ID, None)
+    if imp_id:
+        session["user_id"] = imp_id
+        session.pop(SESSION_IMPERSONATOR_ADMIN_ID, None)
+    else:
+        session.pop("user_id", None)
+        session[SESSION_MAINT_ENV_USER] = imp_env
+        session.pop(SESSION_MAINT_ENV_IMPERSONATOR, None)
     flash("You are back in your own administrator account.", "info")
     return redirect(url_for("main.home"))
 
@@ -10231,7 +10345,7 @@ def _format_reference_counts(counts):
     )
 
 
-@bp.route("/admin/keywords")
+@bp.route("/admin/keyword-maintenance")
 @site_admin_required
 def keyword_maintenance():
     topics = Industry.query.order_by(Industry.industry).all()
@@ -13084,8 +13198,42 @@ def verify_email(code):
     return redirect(url_for("main.login"))
 
 
+def _maint_env_login_post():
+    """Authenticate against TNW_MAINT_LOGIN_USER_* / PASSWORD_* in .env."""
+    username = (request.form.get("username") or request.form.get("email") or "").strip()
+    password = request.form.get("password", "")
+    login_next = _login_next_from_request()
+
+    if not maint_env_login_configured():
+        flash(
+            "Sign-in is not configured. Set TNW_MAINT_LOGIN_USER_1 and "
+            "TNW_MAINT_LOGIN_PASSWORD_1 (and optionally _2) in .env.",
+            "danger",
+        )
+        return render_template("login.html", login_next=login_next)
+
+    if not username or not password:
+        flash("Please enter both username and password.", "danger")
+        return render_template("login.html", login_next=login_next)
+
+    matched = verify_maint_env_login(username, password)
+    if not matched:
+        flash("Invalid username or password.", "danger")
+        return render_template("login.html", login_next=login_next)
+
+    session.pop(SESSION_IMPERSONATOR_ADMIN_ID, None)
+    session.pop("user_id", None)
+    session.pop("pending_twofa_user_id", None)
+    session[SESSION_MAINT_ENV_USER] = matched
+    dest = login_next or url_for("main.admin_events")
+    return _redirect_after_sign_in(dest)
+
+
 @bp.route("/login", methods=["GET", "POST"])
 def login():
+    if current_app.config.get("TNW_MAINT_APP") and request.method == "POST":
+        return _maint_env_login_post()
+
     unverified_popup = None
     if request.method == "POST":
         email = request.form.get("email", "").strip().lower()

@@ -1,0 +1,8 @@
+{% extends "admin/base.html" %}
+{% set admin_nav_active = 'users' %}
+
+{% block admin_panel %}
+<div id="adminPanelUsers">
+{% include "admin/panels/users.html" %}
+</div>
+{% endblock %}
