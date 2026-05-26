@@ -1858,6 +1858,25 @@
         var BULK_DETAILS_URL = {{ url_for('main.admin_meeting_groups_bulk_details') | tojson }};
         var BULK_WEBSITE_URL = {{ url_for('main.admin_meeting_groups_bulk_website') | tojson }};
 
+        function bulkImgDbg() {
+          if (typeof console === "undefined" || !console.debug) return;
+          var args = ["[TNW bulk-image]"].concat(Array.prototype.slice.call(arguments));
+          console.debug.apply(console, args);
+        }
+
+        function bulkImgErr() {
+          if (typeof console === "undefined" || !console.error) return;
+          var args = ["[TNW bulk-image]"].concat(Array.prototype.slice.call(arguments));
+          console.error.apply(console, args);
+        }
+
+        bulkImgDbg("init", {
+          url: BULK_IMAGE_URL,
+          modal: !!document.getElementById("adminBulkImagesModal"),
+          saveBtn: !!document.getElementById("adminBulkImagesSaveBtn"),
+          openBtn: !!document.getElementById("adminBulkImagesOpen"),
+        });
+
         function bulkSelectionIds() {
           return selectedBulkItems().map(function (item) {
             return parseInt(item.id, 10);
@@ -1889,7 +1908,19 @@
         }
 
         function refreshBulkImageThumbs(results) {
+          bulkImgDbg("refreshBulkImageThumbs", { count: (results || []).length, results: results });
           (results || []).forEach(function (row) {
+            var mgId = row && row.meeting_group_id;
+            var cb = mgId ? document.querySelector('.admin-bulk-row-cb[value="' + String(mgId) + '"]') : null;
+            var tr = cb && cb.closest ? cb.closest("tr.admin-mg-overview-row") : null;
+            var hoverImg = tr ? tr.querySelector(".admin-mg-view-hovercard-img") : null;
+            bulkImgDbg("refresh row", {
+              meeting_group_id: mgId,
+              image_url: row && row.image_url,
+              image_filename: row && row.image_filename,
+              foundRow: !!tr,
+              foundHoverImg: !!hoverImg,
+            });
             refreshOverviewGroupImage(
               row && row.meeting_group_id,
               row && row.image_url,
@@ -1927,7 +1958,13 @@
         }
 
         function stageBulkImage(file) {
+          bulkImgDbg("stageBulkImage", file ? {
+            name: file.name,
+            type: file.type,
+            size: file.size,
+          } : null);
           if (!file || !file.type || file.type.indexOf("image/") !== 0) {
+            bulkImgErr("rejected file (not an image)", file);
             if (bulkImagesHint) bulkImagesHint.textContent = "Choose a JPG, PNG, or WebP image.";
             return;
           }
@@ -1940,12 +1977,18 @@
           }
           if (bulkImagesSave) bulkImagesSave.disabled = false;
           if (bulkImagesHint) bulkImagesHint.textContent = "Ready to apply to all selected groups.";
+          bulkImgDbg("staged OK, save enabled");
         }
 
         var bulkImagesOpen = document.getElementById("adminBulkImagesOpen");
         if (bulkImagesOpen && bulkImagesModal) {
           bulkImagesOpen.addEventListener("click", function () {
-            if (!requireBulkSelection("Change images")) return;
+            if (!requireBulkSelection("Change images")) {
+              bulkImgDbg("open blocked — nothing selected");
+              return;
+            }
+            var selIds = bulkSelectionIds();
+            bulkImgDbg("open modal", { selectedIds: selIds, count: selIds.length });
             bulkSelectionSummary(document.getElementById("adminBulkImagesSummary"), "Applying one image to");
             clearBulkImagesPending();
             if (bulkImagesHint) bulkImagesHint.textContent = "";
@@ -1985,35 +2028,87 @@
         if (bulkImagesSave) {
           bulkImagesSave.addEventListener("click", function () {
             var ids = bulkSelectionIds();
-            if (!ids.length || !bulkImagesPending) return;
+            bulkImgDbg("save clicked", {
+              ids: ids,
+              hasFile: !!bulkImagesPending,
+              file: bulkImagesPending ? {
+                name: bulkImagesPending.name,
+                type: bulkImagesPending.type,
+                size: bulkImagesPending.size,
+              } : null,
+            });
+            if (!ids.length || !bulkImagesPending) {
+              bulkImgErr("save aborted — missing ids or file", { ids: ids, hasFile: !!bulkImagesPending });
+              return;
+            }
             bulkImagesSave.disabled = true;
             if (bulkImagesSpin) bulkImagesSpin.classList.remove("d-none");
             if (bulkImagesHint) bulkImagesHint.textContent = "Uploading…";
             var fd = new FormData();
             fd.append("image", bulkImagesPending, bulkImagesPending.name || "image.png");
             ids.forEach(function (id) { fd.append("meeting_group_ids", String(id)); });
+            bulkImgDbg("POST", BULK_IMAGE_URL, { meeting_group_ids: ids });
             fetch(BULK_IMAGE_URL, { method: "POST", body: fd, credentials: "same-origin", headers: { Accept: "application/json" } })
-              .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j || {} }; }); })
+              .then(function (r) {
+                bulkImgDbg("response headers", { status: r.status, statusText: r.statusText, ok: r.ok, url: r.url });
+                return r.text().then(function (text) {
+                  var j = {};
+                  var parseOk = false;
+                  if (text) {
+                    try {
+                      j = JSON.parse(text);
+                      parseOk = true;
+                    } catch (parseErr) {
+                      bulkImgErr("response is not JSON", {
+                        status: r.status,
+                        preview: text.slice(0, 400),
+                        error: parseErr && parseErr.message,
+                      });
+                    }
+                  }
+                  return { ok: r.ok, status: r.status, j: j, parseOk: parseOk, raw: text };
+                });
+              })
               .then(function (res) {
+                bulkImgDbg("response body", {
+                  httpOk: res.ok,
+                  status: res.status,
+                  apiOk: res.j && res.j.ok,
+                  updated: res.j && res.j.updated,
+                  error: res.j && res.j.error,
+                  results: res.j && res.j.results,
+                });
                 if (!res.ok || !res.j.ok) {
-                  if (bulkImagesHint) bulkImagesHint.textContent = res.j.error || "Could not apply the image.";
+                  var errMsg = (res.j && res.j.error) ||
+                    (res.parseOk ? "Could not apply the image." : "Server returned non-JSON (HTTP " + String(res.status) + ").");
+                  bulkImgErr("request failed", errMsg, res);
+                  if (bulkImagesHint) bulkImagesHint.textContent = errMsg;
                   return;
                 }
                 refreshBulkImageThumbs(res.j.results || []);
                 if (bulkImagesModal) bulkImagesModal.hide();
-                window.showTnwMessage(
-                  "Updated images on " + String(res.j.updated || ids.length) + " event group(s).",
-                  { title: "Images updated", variant: "success" }
-                );
+                bulkImgDbg("success — updated", res.j.updated || ids.length, "group(s)");
+                if (typeof window.showTnwMessage === "function") {
+                  window.showTnwMessage(
+                    "Updated images on " + String(res.j.updated || ids.length) + " event group(s).",
+                    { title: "Images updated", variant: "success" }
+                  );
+                } else {
+                  bulkImgErr("showTnwMessage missing — success message not shown");
+                }
               })
-              .catch(function () {
+              .catch(function (err) {
+                bulkImgErr("fetch error", err);
                 if (bulkImagesHint) bulkImagesHint.textContent = "Network error while uploading.";
               })
               .finally(function () {
                 if (bulkImagesSpin) bulkImagesSpin.classList.add("d-none");
                 if (bulkImagesSave) bulkImagesSave.disabled = !bulkImagesPending;
+                bulkImgDbg("save finished");
               });
           });
+        } else {
+          bulkImgErr("save button not found — bulk image upload not wired");
         }
 
         var bulkDetailsModalEl = document.getElementById("adminBulkDetailsModal");
