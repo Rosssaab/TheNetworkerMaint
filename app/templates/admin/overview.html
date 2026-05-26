@@ -1,5 +1,6 @@
 {% extends "admin/base.html" %}
 {% set admin_nav_active = 'overview' %}
+{% block admin_page_title %}{{ table_label('event_groups', 'Event groups') }}{% endblock %}
 
 {% block admin_panel %}
 <div id="adminPanelOverview">

@@ -34,6 +34,7 @@ import secrets
 import shutil
 import smtplib
 import sys
+import tempfile
 import time as time_mod
 import urllib.error
 import urllib.request
@@ -868,6 +869,9 @@ _PROFILE_GATE_ALLOWED_ENDPOINTS = {
     "main.admin_meeting_group_image_replace",
     "main.admin_meeting_groups_bulk_delete",
     "main.admin_meeting_groups_bulk_transfer",
+    "main.admin_meeting_groups_bulk_image",
+    "main.admin_meeting_groups_bulk_details",
+    "main.admin_meeting_groups_bulk_website",
     "main.admin_meeting_group_cascade_delete",
     "main.admin_meetings_move_to_group",
     "main.admin_meeting_groups_lookup_for_move",
@@ -8077,6 +8081,23 @@ def _admin_bulk_meeting_group_ids_from_form() -> list[int]:
     return sorted(set(out))
 
 
+def _admin_bulk_meeting_group_ids_from_json(payload: dict | None) -> list[int]:
+    out: list[int] = []
+    if not payload:
+        return out
+    raw_ids = payload.get("meeting_group_ids")
+    if not isinstance(raw_ids, list):
+        return out
+    for raw in raw_ids:
+        try:
+            i = int(str(raw).strip())
+            if i > 0:
+                out.append(i)
+        except (TypeError, ValueError):
+            continue
+    return sorted(set(out))
+
+
 def _admin_bulk_id_batches(ids: list[int], size: int = 1500):
     for i in range(0, len(ids), size):
         yield ids[i : i + size]
@@ -9302,7 +9323,7 @@ def admin_meeting_group_image_replace(meeting_group_id: int):
 @bp.route("/admin/meeting-groups/<int:meeting_group_id>/description", methods=["GET", "POST"])
 @site_admin_required
 def admin_meeting_group_description(meeting_group_id: int):
-    """Admin: view/update an event group's description (JSON)."""
+    """Admin: view/update an event group's name, website, and description (JSON)."""
     mg = MeetingGroup.query.options(selectinload(MeetingGroup.owner)).get(meeting_group_id)
     if not mg:
         return jsonify(ok=False, error="Event group not found."), 404
@@ -9314,10 +9335,40 @@ def admin_meeting_group_description(meeting_group_id: int):
             meeting_group_id=int(mg.meeting_group_id),
             meeting_group_name=(mg.meeting_group_name or "")[:180],
             owner_email=(owner.email if owner else "") or "",
+            website_url=(mg.website_url or "")[:500],
             description=(mg.description or "")[:12000],
         )
 
     payload = request.get_json(silent=True) or {}
+    if "meeting_group_name" in payload:
+        name_raw = payload.get("meeting_group_name")
+        if name_raw is None:
+            name = ""
+        elif not isinstance(name_raw, str):
+            name = str(name_raw).strip()
+        else:
+            name = name_raw.strip()
+        if not name:
+            return jsonify(ok=False, error="Please enter an event group name."), 400
+        if len(name) > 180:
+            return jsonify(
+                ok=False, error="Event group name must be 180 characters or fewer."
+            ), 400
+        mg.meeting_group_name = name[:180]
+
+    if "website_url" in payload:
+        raw_website = payload.get("website_url")
+        if raw_website is None:
+            raw_website = ""
+        elif not isinstance(raw_website, str):
+            raw_website = str(raw_website).strip()
+        else:
+            raw_website = raw_website.strip()
+        website_url, website_err = _normalize_optional_http_url(raw_website)
+        if website_err:
+            return jsonify(ok=False, error=website_err), 400
+        mg.website_url = website_url
+
     raw = payload.get("description")
     if raw is None:
         raw = ""
@@ -9330,9 +9381,170 @@ def admin_meeting_group_description(meeting_group_id: int):
     except Exception:
         db.session.rollback()
         current_app.logger.exception("admin_meeting_group_description update failed")
-        return jsonify(ok=False, error="Could not save the description."), 500
+        return jsonify(ok=False, error="Could not save the event group."), 500
 
-    return jsonify(ok=True)
+    return jsonify(
+        ok=True,
+        meeting_group_id=int(mg.meeting_group_id),
+        meeting_group_name=(mg.meeting_group_name or "")[:180],
+        website_url=(mg.website_url or "")[:500],
+    )
+
+
+@bp.route("/admin/meeting-groups/bulk-image", methods=["POST"])
+@site_admin_required
+def admin_meeting_groups_bulk_image():
+    """Apply one uploaded banner image to every selected event group."""
+    ids = _admin_bulk_meeting_group_ids_from_form()
+    if not ids:
+        return jsonify(ok=False, error="Select at least one event group."), 400
+    img = request.files.get("image")
+    if not img:
+        return jsonify(ok=False, error="No image uploaded."), 400
+
+    groups = MeetingGroup.query.filter(MeetingGroup.meeting_group_id.in_(ids)).all()
+    if not groups:
+        return jsonify(ok=False, error="No matching event groups were found."), 404
+
+    os.makedirs(MEETING_GROUP_IMAGE_DIR, exist_ok=True)
+    tmp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".upload") as tmp:
+            img.save(tmp.name)
+            tmp_path = tmp.name
+        try:
+            probe_path = tmp_path + ".probe.png"
+            _resize_meeting_group_image_from_path(tmp_path, probe_path)
+            if os.path.isfile(probe_path):
+                os.remove(probe_path)
+        except UnidentifiedImageError:
+            return jsonify(
+                ok=False, error="That file is not a valid image (JPG, PNG, or WEBP)."
+            ), 400
+
+        ts_base = int(datetime.utcnow().timestamp())
+        results: list[dict] = []
+        for mg in groups:
+            stored = (mg.image_filename or "").strip()
+            in_place = bool(stored and _stored_meeting_group_image_abs_path(stored))
+            if in_place:
+                target_path = _stored_meeting_group_image_abs_path(stored)
+                out_fn = stored
+            else:
+                out_fn = f"mg_{int(mg.user_id)}_{ts_base}_{int(mg.meeting_group_id)}.png"
+                target_path = os.path.join(MEETING_GROUP_IMAGE_DIR, out_fn)
+            _resize_meeting_group_image_from_path(tmp_path, target_path)
+            if not in_place:
+                mg.image_filename = out_fn
+            results.append(
+                {
+                    "meeting_group_id": int(mg.meeting_group_id),
+                    "image_filename": out_fn,
+                    "image_url": url_for(
+                        "static", filename=f"meeting_group_images/{out_fn}"
+                    ),
+                }
+            )
+        db.session.commit()
+        return jsonify(ok=True, updated=len(results), results=results)
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("admin_meeting_groups_bulk_image")
+        return jsonify(ok=False, error="Could not apply the image."), 500
+    finally:
+        if tmp_path and os.path.isfile(tmp_path):
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+
+
+@bp.route("/admin/meeting-groups/bulk-details", methods=["POST"])
+@site_admin_required
+def admin_meeting_groups_bulk_details():
+    """Apply the same description and/or website URL to selected event groups."""
+    payload = request.get_json(silent=True) or {}
+    ids = _admin_bulk_meeting_group_ids_from_json(payload)
+    if not ids:
+        return jsonify(ok=False, error="Select at least one event group."), 400
+    if "description" not in payload and "website_url" not in payload:
+        return jsonify(ok=False, error="Nothing to update."), 400
+
+    website_url = None
+    if "website_url" in payload:
+        raw_website = payload.get("website_url")
+        if raw_website is None:
+            raw_website = ""
+        elif not isinstance(raw_website, str):
+            raw_website = str(raw_website).strip()
+        else:
+            raw_website = raw_website.strip()
+        website_url, website_err = _normalize_optional_http_url(raw_website)
+        if website_err:
+            return jsonify(ok=False, error=website_err), 400
+
+    desc = None
+    if "description" in payload:
+        raw = payload.get("description")
+        if raw is None:
+            raw = ""
+        elif not isinstance(raw, str):
+            raw = str(raw)
+        desc = _sanitize_rich_text_html(raw[:20000]) or None
+
+    groups = MeetingGroup.query.filter(MeetingGroup.meeting_group_id.in_(ids)).all()
+    if not groups:
+        return jsonify(ok=False, error="No matching event groups were found."), 404
+
+    for mg in groups:
+        if "description" in payload:
+            mg.description = desc
+        if "website_url" in payload:
+            mg.website_url = website_url
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("admin_meeting_groups_bulk_details")
+        return jsonify(ok=False, error="Could not save changes."), 500
+
+    return jsonify(ok=True, updated=len(groups))
+
+
+@bp.route("/admin/meeting-groups/bulk-website", methods=["POST"])
+@site_admin_required
+def admin_meeting_groups_bulk_website():
+    """Apply the same website URL to selected event groups."""
+    payload = request.get_json(silent=True) or {}
+    ids = _admin_bulk_meeting_group_ids_from_json(payload)
+    if not ids:
+        return jsonify(ok=False, error="Select at least one event group."), 400
+
+    raw_website = payload.get("website_url")
+    if raw_website is None:
+        raw_website = ""
+    elif not isinstance(raw_website, str):
+        raw_website = str(raw_website).strip()
+    else:
+        raw_website = raw_website.strip()
+    website_url, website_err = _normalize_optional_http_url(raw_website)
+    if website_err:
+        return jsonify(ok=False, error=website_err), 400
+
+    groups = MeetingGroup.query.filter(MeetingGroup.meeting_group_id.in_(ids)).all()
+    if not groups:
+        return jsonify(ok=False, error="No matching event groups were found."), 404
+
+    for mg in groups:
+        mg.website_url = website_url
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("admin_meeting_groups_bulk_website")
+        return jsonify(ok=False, error="Could not save website URLs."), 500
+
+    return jsonify(ok=True, updated=len(groups))
 
 
 def _admin_user_edit_prefers_json() -> bool:

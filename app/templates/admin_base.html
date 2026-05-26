@@ -1,112 +1,87 @@
-<!doctype html>
-<html lang="en" class="admin-console-root">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='images/favicon.png') }}">
-  <link rel="apple-touch-icon" href="{{ url_for('static', filename='images/favicon.png') }}">
-  <meta name="theme-color" content="#5d2e87">
-  <meta name="robots" content="noindex, nofollow">
-  <title>{% block title %}Admin{% endblock %} | The Networker</title>
-  <link href="{{ tnw_admin_bootstrap_theme_href }}" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-  <link href="{{ url_for('static', filename='css/admin_console.css') }}" rel="stylesheet">
-  <link href="{{ url_for('static', filename='css/tnw-square-image-crop.css') }}" rel="stylesheet">
-  {% block extra_head %}{% endblock %}
-</head>
-<body class="admin-console-body{% if tnw_bootswatch_theme_active %} tnw-bootswatch-theme{% elif tnw_admin_bootstrap_light_shell %} admin-console-light-shell{% endif %}">
-  {% block admin_topbar %}
-  <header class="admin-console-topbar">
-    <nav class="navbar navbar-expand-lg {% if tnw_bootswatch_theme_active %}border-bottom{% elif tnw_admin_bootstrap_light_shell %}navbar-light bg-light border-bottom shadow-sm{% else %}navbar-dark{% endif %}">
-      <div class="container flex-wrap gap-2">
-        <span class="navbar-brand mb-0 {% if tnw_admin_bootstrap_light_shell %}text-primary{% endif %}">
-          <i class="bi bi-shield-lock-fill me-2" aria-hidden="true"></i>{% block admin_brand %}Admin console{% endblock %}
-        </span>
-        <button class="navbar-toggler {% if tnw_admin_bootstrap_light_shell %}border-secondary{% else %}border-secondary{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#adminNav" aria-controls="adminNav" aria-expanded="false" aria-label="Toggle navigation">
-          <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="adminNav">
-          <ul class="navbar-nav ms-auto gap-lg-1 flex-wrap align-items-lg-center">
-            <li class="nav-item py-1">
-              {% with
-                theme_form_action=url_for('main.set_site_bootstrap_theme'),
-                tnw_bootstrap_theme=tnw_bootstrap_theme,
-                tnw_bootstrap_theme_choices=tnw_bootstrap_theme_choices,
-                theme_label='Bootstrap theme',
-                theme_select_id='adminBootstrapThemeSelect',
-                theme_label_muted=tnw_bootswatch_theme_active or tnw_admin_bootstrap_light_shell
-              %}
-                {% include "partials/tnw_bootstrap_theme_picker.html" %}
-              {% endwith %}
-            </li>
-          </ul>
-        </div>
-      </div>
-    </nav>
-  </header>
-  {% endblock %}
+{% extends "base.html" %}
+{% block html_class %}admin-console-root{% endblock %}
+{% block meta_robots %}<meta name="robots" content="noindex, nofollow">{% endblock %}
+{% block bootstrap_stylesheet %}
+<link href="{{ tnw_admin_bootstrap_theme_href }}" rel="stylesheet">
+{% endblock %}
+{% block site_styles %}{% endblock %}
+{% block body_class %}admin-console-body tnw-maint-app{% if tnw_bootswatch_theme_active %} tnw-bootswatch-theme{% elif tnw_admin_bootstrap_light_shell %} admin-console-light-shell{% endif %}{% endblock %}
 
-  <main class="admin-console-main">
-    <div class="{% block admin_main_container_class %}container{% endblock %}">
-      {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-          {% for category, message in messages %}
-            {% set alert_class = 'alert-secondary' %}
-            {% if category == 'success' %}{% set alert_class = 'alert-success' %}
-            {% elif category == 'danger' %}{% set alert_class = 'alert-danger' %}
-            {% elif category == 'warning' %}{% set alert_class = 'alert-warning' %}
-            {% elif category == 'info' %}{% set alert_class = 'alert-info' %}
-            {% endif %}
-            <div class="alert {{ alert_class }} mb-3" role="alert">{{ message }}</div>
-          {% endfor %}
-        {% endif %}
+{% block extra_head %}
+<link href="{{ url_for('static', filename='css/admin_console.css') }}" rel="stylesheet">
+<link href="{{ url_for('static', filename='css/tnw-square-image-crop.css') }}" rel="stylesheet">
+{% block admin_extra_head %}{% endblock %}
+{% endblock %}
+
+{% block main_shell %}
+<main class="admin-console-main">
+  <div class="{% block admin_main_container_class %}container{% endblock %}">
+    {% block flash_messages %}
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          {% set alert_class = 'alert-secondary' %}
+          {% if category == 'success' %}{% set alert_class = 'alert-success' %}
+          {% elif category == 'danger' %}{% set alert_class = 'alert-danger' %}
+          {% elif category == 'warning' %}{% set alert_class = 'alert-warning' %}
+          {% elif category == 'info' %}{% set alert_class = 'alert-info' %}
+          {% endif %}
+          <div class="alert {{ alert_class }} mb-3" role="alert">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+    {% endblock %}
+    {% block content %}{% endblock %}
+  </div>
+</main>
+{% endblock %}
+
+{% block extra_scripts %}
+{% include "partials/tnw_square_image_crop_modal.html" %}
+
+<div class="modal fade" id="appMessageModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content tnw-modal-branded-shell">
+      {% with modal_title = 'Information', modal_title_id = 'appMessageModalTitle' %}
+        {% include "partials/tnw_modal_header_branded.html" %}
       {% endwith %}
-      {% block content %}{% endblock %}
-    </div>
-  </main>
-
-  {% include "partials/tnw_square_image_crop_modal.html" %}
-
-  <div class="modal fade" id="appMessageModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content {% if tnw_admin_bootstrap_light_shell %}bg-light text-dark border{% else %}bg-dark text-light border border-secondary{% endif %} tnw-modal-branded-shell">
-        {% with modal_title = 'Information', modal_title_id = 'appMessageModalTitle' %}
-          {% include "partials/tnw_modal_header_branded.html" %}
-        {% endwith %}
-        <div class="modal-body">
-          <p class="mb-0 text-break" id="appMessageModalBody" style="white-space: pre-wrap;"></p>
-        </div>
-        <div class="modal-footer {% if tnw_admin_bootstrap_light_shell %}border-secondary border-opacity-25{% else %}border-secondary{% endif %}">
-          <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
-        </div>
+      <div class="modal-body">
+        <p class="mb-0 text-break" id="appMessageModalBody" style="white-space: pre-wrap;"></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
       </div>
     </div>
   </div>
+</div>
 
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  <script>
-    document.addEventListener("DOMContentLoaded", function () {
-      if (typeof window.showTnwMessage === "function") {
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    if (typeof window.showTnwMessage === "function") {
+      return;
+    }
+    window.showTnwMessage = function (message, options) {
+      var modalEl = document.getElementById("appMessageModal");
+      var titleEl = document.getElementById("appMessageModalTitle");
+      var bodyEl = document.getElementById("appMessageModalBody");
+      if (!modalEl || !titleEl || !bodyEl || !window.bootstrap || !window.bootstrap.Modal) {
+        if (typeof console !== "undefined" && console.warn) console.warn(message);
         return;
       }
-      window.showTnwMessage = function (message, options) {
-        var modalEl = document.getElementById("appMessageModal");
-        var titleEl = document.getElementById("appMessageModalTitle");
-        var bodyEl = document.getElementById("appMessageModalBody");
-        if (!modalEl || !titleEl || !bodyEl || !window.bootstrap || !window.bootstrap.Modal) {
-          if (typeof console !== "undefined" && console.warn) console.warn(message);
-          return;
-        }
-        var opts = options || {};
-        var title = opts.title || "Information";
-        titleEl.textContent = title;
+      var opts = options || {};
+      var title = opts.title || "Information";
+      titleEl.textContent = title;
+      if (opts.html) {
+        bodyEl.innerHTML = message || "";
+      } else {
         bodyEl.textContent = message || "";
-        window.bootstrap.Modal.getOrCreateInstance(modalEl).show();
-      };
-    });
-  </script>
-  <script src="{{ url_for('static', filename='js/tnw-square-image-crop.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/tnw-square-image-crop-helper.js') }}"></script>
-  {% block extra_scripts %}{% endblock %}
-</body>
-</html>
+      }
+      window.bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    };
+  });
+</script>
+<script src="{{ url_for('static', filename='js/tnw-rich-text-wizard.js') }}"></script>
+<script src="{{ url_for('static', filename='js/tnw-square-image-crop.js') }}"></script>
+<script src="{{ url_for('static', filename='js/tnw-square-image-crop-helper.js') }}"></script>
+{% block admin_extra_scripts %}{% endblock %}
+{% endblock %}

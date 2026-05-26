@@ -64,19 +64,65 @@
       var modalEl = document.getElementById("adminMgDescModal");
       if (!modalEl || !window.bootstrap || !window.bootstrap.Modal) return;
       var modal = window.bootstrap.Modal.getOrCreateInstance(modalEl);
-      var nameEl = document.getElementById("adminMgDescGroupName");
+      var nameInput = document.getElementById("adminMgDescNameInput");
+      var websiteInput = document.getElementById("adminMgDescWebsiteInput");
       var idEl = document.getElementById("adminMgDescGroupId");
       var ownerEl = document.getElementById("adminMgDescOwnerEmail");
       var ta = document.getElementById("adminMgDescTextarea");
+      var editor = document.getElementById("adminMgDescEditor");
       var hint = document.getElementById("adminMgDescHint");
       var saveBtn = document.getElementById("adminMgDescSaveBtn");
       var saveSpin = document.getElementById("adminMgDescSaveSpin");
       var currentUrl = "";
       var currentId = "";
+      var richWired = false;
+
+      function syncDescEditor() {
+        if (editor && window.tnwSyncRichEditorToInput) {
+          window.tnwSyncRichEditorToInput(editor, false);
+        }
+      }
+
+      function setEditorHtml(html) {
+        if (ta) ta.value = html || "";
+        if (editor) {
+          editor.innerHTML = window.tnwRichValueToEditorHtml
+            ? window.tnwRichValueToEditorHtml(html || "")
+            : html || "";
+        }
+        syncDescEditor();
+      }
+
+      function ensureRichTextWired() {
+        if (richWired || !window.tnwWireRichTextEditors) return;
+        window.tnwWireRichTextEditors(modalEl);
+        richWired = true;
+      }
 
       function setBusy(on) {
         if (saveBtn) saveBtn.disabled = !!on;
+        if (nameInput) nameInput.disabled = !!on;
+        if (websiteInput) websiteInput.disabled = !!on;
+        if (editor) editor.setAttribute("contenteditable", on ? "false" : "true");
         if (saveSpin) saveSpin.classList.toggle("d-none", !on);
+      }
+
+      function updateGridName(mgId, newName) {
+        if (!mgId) return;
+        var openBtn = document.querySelector(
+          '.js-admin-mg-desc-open[data-meeting-group-id="' + CSS.escape(String(mgId)) + '"]'
+        );
+        if (openBtn) {
+          var tr = openBtn.closest("tr");
+          if (tr) {
+            var nameTd = tr.querySelector("td.fw-medium");
+            if (nameTd) nameTd.textContent = newName;
+          }
+        }
+        document.querySelectorAll('[data-meeting-group-id="' + CSS.escape(String(mgId)) + '"]').forEach(function (el) {
+          if (el.hasAttribute("data-mg-name")) el.setAttribute("data-mg-name", newName);
+          if (el.hasAttribute("data-group-name")) el.setAttribute("data-group-name", newName);
+        });
       }
 
       function setHint(msg) {
@@ -88,12 +134,14 @@
         currentUrl = (btn.getAttribute("data-desc-url") || "").trim();
         currentId = (btn.getAttribute("data-meeting-group-id") || "").trim();
         if (!currentUrl) return;
-        if (nameEl) nameEl.textContent = "";
+        if (nameInput) nameInput.value = "";
+        if (websiteInput) websiteInput.value = "";
         if (idEl) idEl.textContent = currentId || "";
         if (ownerEl) ownerEl.textContent = "";
-        if (ta) ta.value = "";
+        setEditorHtml("");
         setHint("Loading…");
         setBusy(true);
+        ensureRichTextWired();
         modal.show();
         fetch(currentUrl, { credentials: "same-origin", headers: { Accept: "application/json" } })
           .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, json: j }; }); })
@@ -101,14 +149,15 @@
             setBusy(false);
             var j = res.json || {};
             if (!res.ok || !j.ok) {
-              setHint((j && j.error) || "Could not load the description.");
+              setHint((j && j.error) || "Could not load the event group.");
               return;
             }
-            if (nameEl) nameEl.textContent = j.meeting_group_name || "";
+            if (nameInput) nameInput.value = j.meeting_group_name || "";
+            if (websiteInput) websiteInput.value = j.website_url || "";
             if (idEl) idEl.textContent = String(j.meeting_group_id || currentId || "");
             if (ownerEl) ownerEl.textContent = (j.owner_email || "").trim() ? ("· " + j.owner_email) : "";
-            if (ta) ta.value = j.description || "";
-            setHint("Tip: line breaks are OK. Formatting tags will be sanitised.");
+            setEditorHtml(j.description || "");
+            setHint("Edit the name, website, and description, then save.");
           })
           .catch(function () {
             setBusy(false);
@@ -126,24 +175,37 @@
       if (saveBtn) {
         saveBtn.addEventListener("click", function () {
           if (!currentUrl) return;
+          var groupName = nameInput ? nameInput.value.trim() : "";
+          if (!groupName) {
+            setHint("Please enter an event group name.");
+            if (nameInput) nameInput.focus();
+            return;
+          }
+          syncDescEditor();
           setBusy(true);
           setHint("Saving…");
           fetch(currentUrl, {
             method: "POST",
             credentials: "same-origin",
             headers: { "Content-Type": "application/json", Accept: "application/json" },
-            body: JSON.stringify({ description: ta ? ta.value : "" }),
+            body: JSON.stringify({
+              meeting_group_name: groupName,
+              website_url: websiteInput ? websiteInput.value.trim() : "",
+              description: ta ? ta.value : "",
+            }),
           })
             .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, json: j }; }); })
             .then(function (res) {
               setBusy(false);
               var j = res.json || {};
               if (!res.ok || !j.ok) {
-                setHint((j && j.error) || "Could not save the description.");
+                setHint((j && j.error) || "Could not save the event group.");
                 return;
               }
+              var savedName = (j.meeting_group_name || groupName).trim();
+              updateGridName(currentId, savedName);
               modal.hide();
-              window.showTnwMessage("Description saved.", { title: "Event group", variant: "success" });
+              window.showTnwMessage("Event group saved.", { title: "Event group", variant: "success" });
             })
             .catch(function () {
               setBusy(false);
@@ -835,14 +897,14 @@
           master.checked = n === boxes.length;
           master.indeterminate = n > 0 && n < boxes.length;
         }
-        var bulkBar = document.getElementById("adminBulkToolbarActions");
-        if (bulkBar) {
-          var selN = boxes.filter(function (b) {
-            return b.checked;
-          }).length;
-          bulkBar.classList.toggle("d-none", selN === 0);
-          bulkBar.classList.toggle("d-flex", selN > 0);
-          bulkBar.setAttribute("aria-hidden", selN === 0 ? "true" : "false");
+        var selN = boxes.filter(function (b) {
+          return b.checked;
+        }).length;
+        var bulkRow = document.getElementById("adminBulkToolbarRow");
+        if (bulkRow) {
+          bulkRow.classList.toggle("d-none", selN === 0);
+          bulkRow.classList.toggle("d-flex", selN > 0);
+          bulkRow.setAttribute("aria-hidden", selN === 0 ? "true" : "false");
         }
       }
 
@@ -1756,6 +1818,316 @@
           bulkTransferModal.show();
         });
       }
+
+      (function initAdminBulkEditToolbar() {
+        var BULK_IMAGE_URL = {{ url_for('main.admin_meeting_groups_bulk_image') | tojson }};
+        var BULK_DETAILS_URL = {{ url_for('main.admin_meeting_groups_bulk_details') | tojson }};
+        var BULK_WEBSITE_URL = {{ url_for('main.admin_meeting_groups_bulk_website') | tojson }};
+
+        function bulkSelectionIds() {
+          return selectedBulkItems().map(function (item) {
+            return parseInt(item.id, 10);
+          }).filter(function (id) {
+            return id > 0;
+          });
+        }
+
+        function bulkSelectionSummary(el, prefix) {
+          if (!el) return;
+          var n = selectedBulkItems().length;
+          el.textContent =
+            (prefix || "Applying to") +
+            " " +
+            String(n) +
+            " selected event group" +
+            (n === 1 ? "" : "s") +
+            ".";
+        }
+
+        function requireBulkSelection(title) {
+          var items = selectedBulkItems();
+          if (items.length) return items;
+          showToolbarMsg(
+            title || "Nothing selected",
+            "Select at least one event group in the table (tick column on the right), then try again."
+          );
+          return null;
+        }
+
+        function bustMgThumbUrl(u) {
+          if (!u) return u;
+          return u + (u.indexOf("?") >= 0 ? "&" : "?") + "t=" + String(Date.now());
+        }
+
+        function refreshBulkImageThumbs(results) {
+          (results || []).forEach(function (row) {
+            var mgId = row && row.meeting_group_id;
+            if (!mgId) return;
+            var img = document.querySelector('.js-admin-mg-img-preview[data-mg-id="' + String(mgId) + '"]');
+            if (img && row.image_url) img.src = bustMgThumbUrl(row.image_url);
+            var card = document.querySelector('.js-admin-mg-img-card[data-mg-id="' + String(mgId) + '"]');
+            if (card) {
+              if (row.image_url) card.setAttribute("data-mg-src", row.image_url);
+              if (row.image_filename) card.setAttribute("data-mg-filename", row.image_filename);
+            }
+          });
+        }
+
+        var bulkImagesModalEl = document.getElementById("adminBulkImagesModal");
+        var bulkImagesModal =
+          bulkImagesModalEl && window.bootstrap && window.bootstrap.Modal
+            ? window.bootstrap.Modal.getOrCreateInstance(bulkImagesModalEl)
+            : null;
+        var bulkImagesFile = document.getElementById("adminBulkImagesFile");
+        var bulkImagesPick = document.getElementById("adminBulkImagesPickBtn");
+        var bulkImagesSave = document.getElementById("adminBulkImagesSaveBtn");
+        var bulkImagesSpin = document.getElementById("adminBulkImagesSaveSpin");
+        var bulkImagesPreview = document.getElementById("adminBulkImagesPreview");
+        var bulkImagesDrop = document.getElementById("adminBulkImagesDrop");
+        var bulkImagesHint = document.getElementById("adminBulkImagesHint");
+        var bulkImagesPending = null;
+        var bulkImagesPendingUrl = "";
+
+        function clearBulkImagesPending() {
+          bulkImagesPending = null;
+          if (bulkImagesPendingUrl) {
+            try { URL.revokeObjectURL(bulkImagesPendingUrl); } catch (_e) {}
+          }
+          bulkImagesPendingUrl = "";
+          if (bulkImagesSave) bulkImagesSave.disabled = true;
+          if (bulkImagesPreview) {
+            bulkImagesPreview.classList.add("d-none");
+            bulkImagesPreview.removeAttribute("src");
+          }
+        }
+
+        function stageBulkImage(file) {
+          if (!file || !file.type || file.type.indexOf("image/") !== 0) {
+            if (bulkImagesHint) bulkImagesHint.textContent = "Choose a JPG, PNG, or WebP image.";
+            return;
+          }
+          clearBulkImagesPending();
+          bulkImagesPending = file;
+          bulkImagesPendingUrl = URL.createObjectURL(file);
+          if (bulkImagesPreview) {
+            bulkImagesPreview.src = bulkImagesPendingUrl;
+            bulkImagesPreview.classList.remove("d-none");
+          }
+          if (bulkImagesSave) bulkImagesSave.disabled = false;
+          if (bulkImagesHint) bulkImagesHint.textContent = "Ready to apply to all selected groups.";
+        }
+
+        var bulkImagesOpen = document.getElementById("adminBulkImagesOpen");
+        if (bulkImagesOpen && bulkImagesModal) {
+          bulkImagesOpen.addEventListener("click", function () {
+            if (!requireBulkSelection("Change images")) return;
+            bulkSelectionSummary(document.getElementById("adminBulkImagesSummary"), "Applying one image to");
+            clearBulkImagesPending();
+            if (bulkImagesHint) bulkImagesHint.textContent = "";
+            bulkImagesModal.show();
+          });
+        }
+        if (bulkImagesPick && bulkImagesFile) {
+          bulkImagesPick.addEventListener("click", function () { bulkImagesFile.click(); });
+          bulkImagesFile.addEventListener("change", function () {
+            if (bulkImagesFile.files && bulkImagesFile.files[0]) stageBulkImage(bulkImagesFile.files[0]);
+            bulkImagesFile.value = "";
+          });
+        }
+        if (bulkImagesDrop) {
+          bulkImagesDrop.addEventListener("dragover", function (ev) { ev.preventDefault(); bulkImagesDrop.classList.add("is-dragover"); });
+          bulkImagesDrop.addEventListener("dragleave", function () { bulkImagesDrop.classList.remove("is-dragover"); });
+          bulkImagesDrop.addEventListener("drop", function (ev) {
+            ev.preventDefault();
+            bulkImagesDrop.classList.remove("is-dragover");
+            var f = ev.dataTransfer && ev.dataTransfer.files && ev.dataTransfer.files[0];
+            if (f) stageBulkImage(f);
+          });
+        }
+        if (bulkImagesModalEl) {
+          bulkImagesModalEl.addEventListener("paste", function (ev) {
+            var cd = ev.clipboardData;
+            if (!cd || !cd.items) return;
+            for (var i = 0; i < cd.items.length; i++) {
+              var it = cd.items[i];
+              if (it.type && it.type.indexOf("image/") === 0) {
+                var f = it.getAsFile();
+                if (f) { ev.preventDefault(); stageBulkImage(f); break; }
+              }
+            }
+          });
+        }
+        if (bulkImagesSave) {
+          bulkImagesSave.addEventListener("click", function () {
+            var ids = bulkSelectionIds();
+            if (!ids.length || !bulkImagesPending) return;
+            bulkImagesSave.disabled = true;
+            if (bulkImagesSpin) bulkImagesSpin.classList.remove("d-none");
+            if (bulkImagesHint) bulkImagesHint.textContent = "Uploading…";
+            var fd = new FormData();
+            fd.append("image", bulkImagesPending, bulkImagesPending.name || "image.png");
+            ids.forEach(function (id) { fd.append("meeting_group_ids", String(id)); });
+            fetch(BULK_IMAGE_URL, { method: "POST", body: fd, credentials: "same-origin", headers: { Accept: "application/json" } })
+              .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j || {} }; }); })
+              .then(function (res) {
+                if (!res.ok || !res.j.ok) {
+                  if (bulkImagesHint) bulkImagesHint.textContent = res.j.error || "Could not apply the image.";
+                  return;
+                }
+                refreshBulkImageThumbs(res.j.results || []);
+                if (bulkImagesModal) bulkImagesModal.hide();
+                window.showTnwMessage(
+                  "Updated images on " + String(res.j.updated || ids.length) + " event group(s).",
+                  { title: "Images updated", variant: "success" }
+                );
+              })
+              .catch(function () {
+                if (bulkImagesHint) bulkImagesHint.textContent = "Network error while uploading.";
+              })
+              .finally(function () {
+                if (bulkImagesSpin) bulkImagesSpin.classList.add("d-none");
+                if (bulkImagesSave) bulkImagesSave.disabled = !bulkImagesPending;
+              });
+          });
+        }
+
+        var bulkDetailsModalEl = document.getElementById("adminBulkDetailsModal");
+        var bulkDetailsModal =
+          bulkDetailsModalEl && window.bootstrap && window.bootstrap.Modal
+            ? window.bootstrap.Modal.getOrCreateInstance(bulkDetailsModalEl)
+            : null;
+        var bulkDetailsWebsite = document.getElementById("adminBulkDetailsWebsiteInput");
+        var bulkDetailsTa = document.getElementById("adminBulkDetailsTextarea");
+        var bulkDetailsEditor = document.getElementById("adminBulkDetailsEditor");
+        var bulkDetailsSave = document.getElementById("adminBulkDetailsSaveBtn");
+        var bulkDetailsSpin = document.getElementById("adminBulkDetailsSaveSpin");
+        var bulkDetailsHint = document.getElementById("adminBulkDetailsHint");
+        var bulkDetailsRichWired = false;
+
+        function syncBulkDetailsEditor() {
+          if (bulkDetailsEditor && window.tnwSyncRichEditorToInput) {
+            window.tnwSyncRichEditorToInput(bulkDetailsEditor, false);
+          }
+        }
+
+        function resetBulkDetailsForm() {
+          if (bulkDetailsWebsite) bulkDetailsWebsite.value = "";
+          if (bulkDetailsTa) bulkDetailsTa.value = "";
+          if (bulkDetailsEditor) bulkDetailsEditor.innerHTML = "";
+          if (bulkDetailsHint) bulkDetailsHint.textContent = "Enter the website and description to apply to every selected group.";
+        }
+
+        var bulkDetailsOpen = document.getElementById("adminBulkDetailsOpen");
+        if (bulkDetailsOpen && bulkDetailsModal) {
+          bulkDetailsOpen.addEventListener("click", function () {
+            if (!requireBulkSelection("Change details")) return;
+            bulkSelectionSummary(document.getElementById("adminBulkDetailsSummary"));
+            resetBulkDetailsForm();
+            if (!bulkDetailsRichWired && window.tnwWireRichTextEditors) {
+              window.tnwWireRichTextEditors(bulkDetailsModalEl);
+              bulkDetailsRichWired = true;
+            }
+            bulkDetailsModal.show();
+          });
+        }
+        if (bulkDetailsSave) {
+          bulkDetailsSave.addEventListener("click", function () {
+            var ids = bulkSelectionIds();
+            if (!ids.length) return;
+            syncBulkDetailsEditor();
+            bulkDetailsSave.disabled = true;
+            if (bulkDetailsSpin) bulkDetailsSpin.classList.remove("d-none");
+            if (bulkDetailsHint) bulkDetailsHint.textContent = "Saving…";
+            fetch(BULK_DETAILS_URL, {
+              method: "POST",
+              credentials: "same-origin",
+              headers: { "Content-Type": "application/json", Accept: "application/json" },
+              body: JSON.stringify({
+                meeting_group_ids: ids,
+                website_url: bulkDetailsWebsite ? bulkDetailsWebsite.value.trim() : "",
+                description: bulkDetailsTa ? bulkDetailsTa.value : "",
+              }),
+            })
+              .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j || {} }; }); })
+              .then(function (res) {
+                if (!res.ok || !res.j.ok) {
+                  if (bulkDetailsHint) bulkDetailsHint.textContent = res.j.error || "Could not save changes.";
+                  return;
+                }
+                if (bulkDetailsModal) bulkDetailsModal.hide();
+                window.showTnwMessage(
+                  "Updated details on " + String(res.j.updated || ids.length) + " event group(s).",
+                  { title: "Details updated", variant: "success" }
+                );
+              })
+              .catch(function () {
+                if (bulkDetailsHint) bulkDetailsHint.textContent = "Network error while saving.";
+              })
+              .finally(function () {
+                bulkDetailsSave.disabled = false;
+                if (bulkDetailsSpin) bulkDetailsSpin.classList.add("d-none");
+              });
+          });
+        }
+
+        var bulkWebsiteModalEl = document.getElementById("adminBulkWebsiteModal");
+        var bulkWebsiteModal =
+          bulkWebsiteModalEl && window.bootstrap && window.bootstrap.Modal
+            ? window.bootstrap.Modal.getOrCreateInstance(bulkWebsiteModalEl)
+            : null;
+        var bulkWebsiteInput = document.getElementById("adminBulkWebsiteInput");
+        var bulkWebsiteSave = document.getElementById("adminBulkWebsiteSaveBtn");
+        var bulkWebsiteSpin = document.getElementById("adminBulkWebsiteSaveSpin");
+        var bulkWebsiteHint = document.getElementById("adminBulkWebsiteHint");
+
+        var bulkWebsiteOpen = document.getElementById("adminBulkWebsiteOpen");
+        if (bulkWebsiteOpen && bulkWebsiteModal) {
+          bulkWebsiteOpen.addEventListener("click", function () {
+            if (!requireBulkSelection("Change website")) return;
+            bulkSelectionSummary(document.getElementById("adminBulkWebsiteSummary"));
+            if (bulkWebsiteInput) bulkWebsiteInput.value = "";
+            if (bulkWebsiteHint) bulkWebsiteHint.textContent = "Enter the website URL to apply to every selected group.";
+            bulkWebsiteModal.show();
+          });
+        }
+        if (bulkWebsiteSave) {
+          bulkWebsiteSave.addEventListener("click", function () {
+            var ids = bulkSelectionIds();
+            if (!ids.length) return;
+            bulkWebsiteSave.disabled = true;
+            if (bulkWebsiteSpin) bulkWebsiteSpin.classList.remove("d-none");
+            if (bulkWebsiteHint) bulkWebsiteHint.textContent = "Saving…";
+            fetch(BULK_WEBSITE_URL, {
+              method: "POST",
+              credentials: "same-origin",
+              headers: { "Content-Type": "application/json", Accept: "application/json" },
+              body: JSON.stringify({
+                meeting_group_ids: ids,
+                website_url: bulkWebsiteInput ? bulkWebsiteInput.value.trim() : "",
+              }),
+            })
+              .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j || {} }; }); })
+              .then(function (res) {
+                if (!res.ok || !res.j.ok) {
+                  if (bulkWebsiteHint) bulkWebsiteHint.textContent = res.j.error || "Could not save website URLs.";
+                  return;
+                }
+                if (bulkWebsiteModal) bulkWebsiteModal.hide();
+                window.showTnwMessage(
+                  "Updated website on " + String(res.j.updated || ids.length) + " event group(s).",
+                  { title: "Website updated", variant: "success" }
+                );
+              })
+              .catch(function () {
+                if (bulkWebsiteHint) bulkWebsiteHint.textContent = "Network error while saving.";
+              })
+              .finally(function () {
+                bulkWebsiteSave.disabled = false;
+                if (bulkWebsiteSpin) bulkWebsiteSpin.classList.add("d-none");
+              });
+          });
+        }
+      })();
 
       function escMg(s) {
         return String(s)

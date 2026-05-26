@@ -106,10 +106,13 @@ def _cached_staging_available(url: str) -> bool:
 
 def tnw_migration_notice_response_or_none():
     """If migration tombstone is on, return that HTML response; otherwise None."""
+    from flask import current_app, render_template, request
+
+    # Admin maint console is a separate deploy; never block it with the public-site tombstone.
+    if current_app.config.get("TNW_MAINT_APP"):
+        return None
     if not tnw_migration_notice_on():
         return None
-    from flask import render_template, request
-
     ep = request.endpoint
     if ep in ("static", "main.tnw_service_worker"):
         return None
