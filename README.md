@@ -20,7 +20,7 @@ Sign in with a user that has `admin_user` set in the database.
 
 ## Shared uploads
 
-Group/event images are stored under the main project static tree. Run once:
+Group/event/user images are **not in git** and are **not deployed** by `PushToMaint*.bat`. On your PC, junction them to the main site static tree (run once):
 
 ```powershell
 .\scripts\link-upload-static.ps1
@@ -31,6 +31,8 @@ This creates directory junctions:
 - `app\static\meeting_group_images` → `TheNetworkerDev\app\static\meeting_group_images`
 - `app\static\event_images` → …
 - `app\static\user_images` → …
+
+On the VPS, keep upload folders on disk only (create empty dirs or sync media separately); `git pull` / staging deploy must not overwrite them.
 
 ## Production (same VPS, different URL)
 

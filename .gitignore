@@ -7,3 +7,9 @@ instance/
 logs/
 deploy/maint-staging-ssh.local.env
 deploy/staging-ssh.local.env
+GithubKeyPair/
+
+# Uploaded media — junctions on dev PC, server-only on VPS; never commit or deploy via git
+app/static/meeting_group_images/
+app/static/event_images/
+app/static/user_images/

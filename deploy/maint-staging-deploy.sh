@@ -7,6 +7,8 @@ SERVICE="${TNW_MAINT_SERVICE:-the-networker-maint}"
 
 cd "$APP_DIR"
 
+mkdir -p app/static/meeting_group_images app/static/event_images app/static/user_images
+
 if grep -q $'\r' deploy/maint-staging-deploy.sh 2>/dev/null; then
   sed -i 's/\r$//' deploy/*.sh 2>/dev/null || true
 fi
