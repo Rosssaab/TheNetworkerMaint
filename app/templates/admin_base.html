@@ -8,7 +8,7 @@
 {% block body_class %}admin-console-body tnw-maint-app{% if tnw_bootswatch_theme_active %} tnw-bootswatch-theme{% elif tnw_admin_bootstrap_light_shell %} admin-console-light-shell{% endif %}{% endblock %}
 
 {% block extra_head %}
-<link href="{{ url_for('static', filename='css/admin_console.css') }}" rel="stylesheet">
+<link href="{{ url_for('main.admin_maint_static', filename='css/admin_console.css') }}" rel="stylesheet">
 <link href="{{ url_for('static', filename='css/tnw-square-image-crop.css') }}" rel="stylesheet">
 {% block admin_extra_head %}{% endblock %}
 {% endblock %}
