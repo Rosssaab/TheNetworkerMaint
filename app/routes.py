@@ -9416,34 +9416,89 @@ def admin_meeting_group_description(meeting_group_id: int):
 @site_admin_required
 def admin_meeting_groups_bulk_image():
     """Apply one uploaded banner image to every selected event group."""
+
+    def _bulk_img_log(step: str, **fields) -> None:
+        parts = [f"[TNW bulk-image] {step}"]
+        for key, val in fields.items():
+            parts.append(f"{key}={val!r}")
+        line = " | ".join(parts)
+        print(line, flush=True)
+        current_app.logger.warning(line)
+
+    _bulk_img_log(
+        "request",
+        method=request.method,
+        content_type=request.content_type,
+        content_length=request.content_length,
+        form_keys=list(request.form.keys()),
+        file_keys=list(request.files.keys()),
+    )
+
     ids = _admin_bulk_meeting_group_ids_from_form()
+    _bulk_img_log("parsed_ids", ids=ids, count=len(ids))
     if not ids:
+        _bulk_img_log("abort", reason="no_ids")
         return jsonify(ok=False, error="Select at least one event group."), 400
+
     img = request.files.get("image")
     if not img:
+        _bulk_img_log("abort", reason="no_image_file")
         return jsonify(ok=False, error="No image uploaded."), 400
 
+    _bulk_img_log(
+        "upload_file",
+        filename=getattr(img, "filename", None),
+        mimetype=getattr(img, "mimetype", None),
+        content_length=getattr(img, "content_length", None),
+    )
+
     groups = MeetingGroup.query.filter(MeetingGroup.meeting_group_id.in_(ids)).all()
+    found_ids = [int(g.meeting_group_id) for g in groups]
+    missing_ids = sorted(set(ids) - set(found_ids))
+    _bulk_img_log(
+        "db_lookup",
+        requested=len(ids),
+        found=len(groups),
+        found_ids=found_ids,
+        missing_ids=missing_ids,
+    )
     if not groups:
+        _bulk_img_log("abort", reason="no_matching_groups")
         return jsonify(ok=False, error="No matching event groups were found."), 404
 
-    os.makedirs(_meeting_group_image_dir_abs(), exist_ok=True)
+    image_dir = _meeting_group_image_dir_abs()
+    dir_exists = os.path.isdir(image_dir)
+    dir_writable = os.access(image_dir, os.W_OK) if dir_exists else None
+    _bulk_img_log(
+        "image_dir",
+        path=image_dir,
+        exists=dir_exists,
+        writable=dir_writable,
+        cwd=os.getcwd(),
+        root_path=current_app.root_path,
+    )
+
+    os.makedirs(image_dir, exist_ok=True)
     tmp_path = None
     try:
         with tempfile.NamedTemporaryFile(delete=False, suffix=".upload") as tmp:
             img.save(tmp.name)
             tmp_path = tmp.name
+        tmp_size = os.path.getsize(tmp_path) if tmp_path and os.path.isfile(tmp_path) else None
+        _bulk_img_log("temp_saved", path=tmp_path, size_bytes=tmp_size)
+
         try:
             probe_path = tmp_path + ".probe.png"
             _resize_meeting_group_image_from_path(tmp_path, probe_path)
             if os.path.isfile(probe_path):
                 os.remove(probe_path)
-        except UnidentifiedImageError:
+            _bulk_img_log("probe_resize", ok=True)
+        except UnidentifiedImageError as exc:
+            _bulk_img_log("abort", reason="invalid_image", error=str(exc))
             return jsonify(
                 ok=False, error="That file is not a valid image (JPG, PNG, or WEBP)."
             ), 400
 
-        image_dir = _meeting_group_image_dir_abs()
         ts_base = int(datetime.utcnow().timestamp())
         results: list[dict] = []
         for mg in groups:
@@ -9456,13 +9511,37 @@ def admin_meeting_groups_bulk_image():
                 out_fn = f"mg_{int(mg.user_id)}_{ts_base}_{int(mg.meeting_group_id)}.png"
                 target_path = os.path.join(image_dir, out_fn)
             if not target_path:
+                _bulk_img_log(
+                    "abort",
+                    reason="bad_target_path",
+                    meeting_group_id=int(mg.meeting_group_id),
+                    stored=stored,
+                )
                 return jsonify(
                     ok=False,
                     error=f"Could not resolve image path for group {mg.meeting_group_id}.",
                 ), 400
+
+            _bulk_img_log(
+                "apply_start",
+                meeting_group_id=int(mg.meeting_group_id),
+                stored=stored or None,
+                in_place=in_place,
+                out_fn=out_fn,
+                target_path=target_path,
+                target_exists_before=os.path.isfile(target_path),
+            )
             _resize_meeting_group_image_from_path(tmp_path, target_path)
+            written_size = os.path.getsize(target_path) if os.path.isfile(target_path) else None
             if not in_place:
                 mg.image_filename = out_fn
+            _bulk_img_log(
+                "apply_done",
+                meeting_group_id=int(mg.meeting_group_id),
+                out_fn=out_fn,
+                written_bytes=written_size,
+                db_filename=mg.image_filename,
+            )
             results.append(
                 {
                     "meeting_group_id": int(mg.meeting_group_id),
@@ -9472,18 +9551,22 @@ def admin_meeting_groups_bulk_image():
                     ),
                 }
             )
+
         db.session.commit()
+        _bulk_img_log("success", updated=len(results), results=results)
         return jsonify(ok=True, updated=len(results), results=results)
-    except Exception:
+    except Exception as exc:
         db.session.rollback()
+        _bulk_img_log("exception", type=type(exc).__name__, error=str(exc))
         current_app.logger.exception("admin_meeting_groups_bulk_image")
         return jsonify(ok=False, error="Could not apply the image."), 500
     finally:
         if tmp_path and os.path.isfile(tmp_path):
             try:
                 os.unlink(tmp_path)
-            except OSError:
-                pass
+                _bulk_img_log("temp_removed", path=tmp_path)
+            except OSError as exc:
+                _bulk_img_log("temp_remove_failed", path=tmp_path, error=str(exc))
 
 
 @bp.route("/admin/meeting-groups/bulk-details", methods=["POST"])
