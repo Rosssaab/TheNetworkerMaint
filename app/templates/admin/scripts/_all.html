@@ -1819,6 +1819,40 @@
         });
       }
 
+      function bustMgImageUrl(u) {
+        if (!u) return u;
+        return u + (u.indexOf("?") >= 0 ? "&" : "?") + "t=" + String(Date.now());
+      }
+
+      function refreshOverviewGroupImage(mgId, imageUrl, imageFilename) {
+        if (!mgId) return;
+        var busted = bustMgImageUrl(imageUrl);
+        var cb = document.querySelector('.admin-bulk-row-cb[value="' + String(mgId) + '"]');
+        var tr = cb && cb.closest ? cb.closest("tr.admin-mg-overview-row") : null;
+        if (tr) {
+          var hoverImg = tr.querySelector(".admin-mg-view-hovercard-img");
+          if (hoverImg && busted) hoverImg.src = busted;
+        }
+        var btn = document.querySelector('.js-admin-mg-img-replace-open[data-mg-id="' + String(mgId) + '"]');
+        if (btn) {
+          if (imageUrl) btn.setAttribute("data-mg-src", imageUrl);
+          if (imageFilename != null && imageFilename !== "") {
+            btn.setAttribute("data-mg-filename", imageFilename);
+          }
+        }
+        var preview = document.querySelector('.js-admin-mg-img-preview[data-mg-id="' + String(mgId) + '"]');
+        if (preview && busted) preview.src = busted;
+        var card = document.querySelector('.js-admin-mg-img-card[data-mg-id="' + String(mgId) + '"]');
+        if (card) {
+          if (imageUrl) card.setAttribute("data-mg-src", imageUrl);
+          if (imageFilename != null && imageFilename !== "") {
+            card.setAttribute("data-mg-filename", imageFilename);
+          }
+        }
+      }
+      window.tnwBustMgImageUrl = bustMgImageUrl;
+      window.tnwRefreshOverviewGroupImage = refreshOverviewGroupImage;
+
       (function initAdminBulkEditToolbar() {
         var BULK_IMAGE_URL = {{ url_for('main.admin_meeting_groups_bulk_image') | tojson }};
         var BULK_DETAILS_URL = {{ url_for('main.admin_meeting_groups_bulk_details') | tojson }};
@@ -1854,22 +1888,13 @@
           return null;
         }
 
-        function bustMgThumbUrl(u) {
-          if (!u) return u;
-          return u + (u.indexOf("?") >= 0 ? "&" : "?") + "t=" + String(Date.now());
-        }
-
         function refreshBulkImageThumbs(results) {
           (results || []).forEach(function (row) {
-            var mgId = row && row.meeting_group_id;
-            if (!mgId) return;
-            var img = document.querySelector('.js-admin-mg-img-preview[data-mg-id="' + String(mgId) + '"]');
-            if (img && row.image_url) img.src = bustMgThumbUrl(row.image_url);
-            var card = document.querySelector('.js-admin-mg-img-card[data-mg-id="' + String(mgId) + '"]');
-            if (card) {
-              if (row.image_url) card.setAttribute("data-mg-src", row.image_url);
-              if (row.image_filename) card.setAttribute("data-mg-filename", row.image_filename);
-            }
+            refreshOverviewGroupImage(
+              row && row.meeting_group_id,
+              row && row.image_url,
+              row && row.image_filename
+            );
           });
         }
 
@@ -3936,16 +3961,15 @@
         });
       }
       function bustUrl(u) {
+        if (typeof window.tnwBustMgImageUrl === "function") {
+          return window.tnwBustMgImageUrl(u);
+        }
         if (!u) return u;
         return u + (u.indexOf("?") >= 0 ? "&" : "?") + "t=" + String(Date.now());
       }
       function refreshGridThumb(mgId, imageUrl, newFilename) {
-        var img = document.querySelector('.js-admin-mg-img-preview[data-mg-id="' + String(mgId) + '"]');
-        if (img && imageUrl) img.src = bustUrl(imageUrl);
-        var card = document.querySelector('.js-admin-mg-img-card[data-mg-id="' + String(mgId) + '"]');
-        if (card) {
-          if (imageUrl) card.setAttribute("data-mg-src", imageUrl);
-          if (newFilename != null && newFilename !== "") card.setAttribute("data-mg-filename", newFilename);
+        if (typeof window.tnwRefreshOverviewGroupImage === "function") {
+          window.tnwRefreshOverviewGroupImage(mgId, imageUrl, newFilename);
         }
         var fnEl = document.getElementById("adminMgImgReplaceFilename");
         if (fnEl && newFilename != null && newFilename !== "") fnEl.textContent = newFilename;

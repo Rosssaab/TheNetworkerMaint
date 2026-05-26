@@ -9268,14 +9268,16 @@ def admin_meeting_group_events_for_delete(meeting_group_id: int):
     )
 
 
+def _meeting_group_image_dir_abs() -> str:
+    return os.path.join(current_app.root_path, "static", "meeting_group_images")
+
+
 def _stored_meeting_group_image_abs_path(filename: str) -> str | None:
     """Resolve a stored meeting_group_images filename to an absolute path under static, or None if unsafe."""
     fn = (filename or "").strip()
     if not fn or os.path.basename(fn) != fn:
         return None
-    base = os.path.abspath(
-        os.path.join(current_app.root_path, "static", "meeting_group_images")
-    )
+    base = os.path.abspath(_meeting_group_image_dir_abs())
     target = os.path.abspath(os.path.join(base, fn))
     try:
         if os.path.commonpath([base, target]) != base:
@@ -9425,7 +9427,7 @@ def admin_meeting_groups_bulk_image():
     if not groups:
         return jsonify(ok=False, error="No matching event groups were found."), 404
 
-    os.makedirs(MEETING_GROUP_IMAGE_DIR, exist_ok=True)
+    os.makedirs(_meeting_group_image_dir_abs(), exist_ok=True)
     tmp_path = None
     try:
         with tempfile.NamedTemporaryFile(delete=False, suffix=".upload") as tmp:
@@ -9441,6 +9443,7 @@ def admin_meeting_groups_bulk_image():
                 ok=False, error="That file is not a valid image (JPG, PNG, or WEBP)."
             ), 400
 
+        image_dir = _meeting_group_image_dir_abs()
         ts_base = int(datetime.utcnow().timestamp())
         results: list[dict] = []
         for mg in groups:
@@ -9451,7 +9454,12 @@ def admin_meeting_groups_bulk_image():
                 out_fn = stored
             else:
                 out_fn = f"mg_{int(mg.user_id)}_{ts_base}_{int(mg.meeting_group_id)}.png"
-                target_path = os.path.join(MEETING_GROUP_IMAGE_DIR, out_fn)
+                target_path = os.path.join(image_dir, out_fn)
+            if not target_path:
+                return jsonify(
+                    ok=False,
+                    error=f"Could not resolve image path for group {mg.meeting_group_id}.",
+                ), 400
             _resize_meeting_group_image_from_path(tmp_path, target_path)
             if not in_place:
                 mg.image_filename = out_fn

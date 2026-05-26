@@ -9,6 +9,8 @@ If the app dir is not a git clone, deploy uses `git archive` from your PC. Prese
 - `STAGING_APP_DIR/.env`
 - `app/static/meeting_group_images/`, `event_images/`, `user_images/` (uploads are not in Git)
 
+**nginx + static (avoid mixing paths):** point `/static/` at `maint/app/static/` (not the main site’s static tree). To share upload images with the public site, symlink the three upload folders inside `maint/app/static/` to the main app’s copies — see `deploy/nginx-maint.example.conf`. Pointing nginx only at the main site’s image folders makes images work but maint CSS/JS (e.g. `admin_console.css`) 404.
+
 ## Still required on a new box (one-time)
 
 1. **`.env`** in the maint app dir (`DATABASE_URL`, `TNW_MAINT_LOGIN_*`, `SECRET_KEY`, etc.)
