@@ -67,7 +67,7 @@ set "STAGING_SSH_HOST=!STAGING_SSH_HOST: =!"
 set "STAGING_SSH_USER=!STAGING_SSH_USER: =!"
 set "STAGING_SSH_KEY=!STAGING_SSH_KEY: =!"
 set "STAGING_APP_DIR=!STAGING_APP_DIR: =!"
-if "!STAGING_APP_DIR!"=="" set "STAGING_APP_DIR=/home/ubuntu/PythonRoot/TheNetworkerDevMaint"
+if "!STAGING_APP_DIR!"=="" set "STAGING_APP_DIR=/home/ubuntu/PythonRoot/maint"
 
 if "!STAGING_SSH_HOST!"=="" (
   echo ERROR: STAGING_SSH_HOST not set in %ENV_FILE%
@@ -155,7 +155,7 @@ echo Checking for git repo on server...
 for /f "delims=" %%g in ('ssh -i "!STAGING_SSH_KEY!" -o BatchMode^=yes -o StrictHostKeyChecking^=accept-new "!SSH_TARGET!" "test -d '!STAGING_APP_DIR!/.git' && echo yes || echo no"') do set "GIT_CHK=%%g"
 if /i "!GIT_CHK!"=="yes" (
   echo Using git fetch on server...
-  ssh -i "!STAGING_SSH_KEY!" -o StrictHostKeyChecking=accept-new -o BatchMode=yes "!SSH_TARGET!" "cd '!STAGING_APP_DIR!' && GIT_TERMINAL_PROMPT=0 git fetch origin staging && git reset --hard origin/staging && TNW_DEPLOY_REEXEC=1 bash deploy/maint-staging-deploy.sh"
+  ssh -i "!STAGING_SSH_KEY!" -o StrictHostKeyChecking=accept-new -o BatchMode=yes "!SSH_TARGET!" "cd '!STAGING_APP_DIR!' && GIT_TERMINAL_PROMPT=0 git fetch origin staging && git reset --hard origin/staging && TNW_STAGING_APP_DIR='!STAGING_APP_DIR!' TNW_DEPLOY_REEXEC=1 bash deploy/maint-staging-deploy.sh"
   if errorlevel 1 goto :ssh_deploy_fail
   goto :ssh_deploy_ok
 )

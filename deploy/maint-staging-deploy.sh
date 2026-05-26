@@ -2,7 +2,7 @@
 # Run on the staging server after code is at origin/staging (TheNetworkerMaint repo).
 set -euo pipefail
 
-APP_DIR="${TNW_STAGING_APP_DIR:-/home/ubuntu/PythonRoot/TheNetworkerDevMaint}"
+APP_DIR="${TNW_STAGING_APP_DIR:-/home/ubuntu/PythonRoot/maint}"
 SERVICE="${TNW_MAINT_SERVICE:-the-networker-maint}"
 
 cd "$APP_DIR"
