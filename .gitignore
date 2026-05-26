@@ -4,3 +4,6 @@ __pycache__/
 instance/
 *.pyc
 .pytest_cache/
+logs/
+deploy/maint-staging-ssh.local.env
+deploy/staging-ssh.local.env

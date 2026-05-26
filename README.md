@@ -56,3 +56,29 @@ Public site (`TheNetworkerDev`) is unchanged; remove admin templates there after
 | `SECRET_KEY` | Same as main site if you need shared sessions across subdomains; otherwise separate |
 | `GEMINI_API_KEY` | Optional — AI tools in admin (test events, keyword suggest, polish) |
 | `PORT` | Default `8104` |
+
+## Git push ([TheNetworkerMaint](https://github.com/Rosssaab/TheNetworkerMaint))
+
+On branch **main**:
+
+```bat
+PushToMaint.bat "Describe your changes"
+```
+
+- Bumps patch version in `config.py`, commits, pushes to `origin/main`
+- Ensures `origin` is `https://github.com/Rosssaab/TheNetworkerMaint.git`
+- Skips `.env`, PEM keys, and local SSH env files
+
+Push-only (commits already made):
+
+```bat
+PushToMaint.bat
+```
+
+Staging merge + server deploy (after one-time copy of `deploy\maint-staging-ssh.local.env.example`):
+
+```bat
+PushToMaintStaging.bat "optional commit message"
+```
+
+`PushToMain.bat` is a wrapper that calls `PushToMaint.bat`.
