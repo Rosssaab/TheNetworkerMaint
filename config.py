@@ -12,7 +12,7 @@ class Config:
     TNW_MAINT_LOGIN_USER_2 = (os.getenv("TNW_MAINT_LOGIN_USER_2") or "").strip()
     TNW_MAINT_LOGIN_PASSWORD_2 = os.getenv("TNW_MAINT_LOGIN_PASSWORD_2") or ""
     # Semver shown in site footer. Patch: PushToMaint.bat | minor: PushToMaintStaging.bat
-    APP_VERSION = "1.35.0-maint"
+    APP_VERSION = "1.36.0-maint"
     SECRET_KEY = os.getenv("SECRET_KEY", "dev-change-me")
     SQLALCHEMY_DATABASE_URI = os.getenv(
         "DATABASE_URL",
