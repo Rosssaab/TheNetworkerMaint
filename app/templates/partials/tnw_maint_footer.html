@@ -1,0 +1,24 @@
+<footer class="tnw-maint-footer">
+  <div class="container-fluid px-2 px-sm-3 px-xl-4 admin-events-main-wide">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 py-1">
+      <span class="tnw-maint-footer-copy small mb-0">The Networker · Admin maint console</span>
+      <div class="d-flex flex-wrap align-items-center gap-3 ms-auto">
+        <div class="tnw-maint-footer-theme">
+          {% with
+            theme_form_action=url_for('main.set_site_bootstrap_theme'),
+            tnw_bootstrap_theme=tnw_bootstrap_theme,
+            tnw_bootstrap_theme_choices=tnw_bootstrap_theme_choices,
+            theme_label='Bootstrap theme',
+            theme_select_id='adminBootstrapThemeSelect',
+            theme_on_dark_header=true
+          %}
+            {% include "partials/tnw_bootstrap_theme_picker.html" %}
+          {% endwith %}
+        </div>
+        {% if app_version %}
+        <span class="tnw-maint-footer-version small mb-0">Version {{ app_version }}</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</footer>

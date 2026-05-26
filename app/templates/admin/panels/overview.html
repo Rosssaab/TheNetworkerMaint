@@ -7,36 +7,39 @@
             <label class="form-check-label small text-nowrap" for="adminOvIgnoreTestCb">Ignore test users</label>
           </div>
         </div>
-        <div class="d-flex flex-wrap align-items-end gap-2 gap-lg-3">
-          <form id="adminOvFilterForm" class="d-flex flex-wrap align-items-end gap-2 gap-md-3 flex-grow-1 min-w-0" method="get" action="{{ url_for('main.admin_events') }}">
-            <input type="hidden" name="sort" value="{{ admin_sort_key }}">
-            <input type="hidden" name="dir" value="{{ admin_sort_dir }}">
-            <div class="d-flex flex-column" style="min-width: 9rem; width: 12rem; max-width: 100%;">
-              <label class="form-label mb-0" for="ovGroupQ">Name contains</label>
-              <input class="form-control form-control-sm" id="ovGroupQ" name="group_q" value="{{ request.args.get('group_q', '') }}" autocomplete="off">
-            </div>
-            <div class="d-flex flex-column" style="min-width: 9rem; width: 14rem; max-width: 100%;">
-              <label class="form-label mb-0" for="ovEmailQ">Owner email contains</label>
-              <input class="form-control form-control-sm" id="ovEmailQ" name="email_q" value="{{ request.args.get('email_q', '') }}" autocomplete="off">
-            </div>
-            <div class="d-flex flex-wrap align-items-center gap-2 pb-1">
-              <button type="submit" class="btn btn-primary btn-sm">Apply filters</button>
-              <a class="btn btn-primary btn-sm js-admin-ov-grid-reload" href="{{ url_for('main.admin_events') }}">Clear</a>
-              <button
-                type="button"
-                class="btn btn-sm btn-info text-dark text-nowrap"
-                id="adminMgBulkKwSuggestBtn"
-                title="Run AI on each selected event group’s title and description to suggest existing topic keywords to add"
-              >
-                <i class="bi bi-magic me-1" aria-hidden="true"></i>AI keywords (selected)
-              </button>
-            </div>
-          </form>
-          <div id="adminBulkToolbarActions" class="flex-wrap align-items-center gap-2 pb-1 ms-lg-auto flex-shrink-0 d-none" aria-hidden="true">
-            <button type="button" class="btn btn-primary btn-sm" id="adminBulkDeleteOpen">Delete selected</button>
-            <button type="button" class="btn btn-primary btn-sm" id="adminBulkTransferOpen">Change ownership</button>
+        <form id="adminOvFilterForm" class="d-flex flex-wrap align-items-end gap-2 gap-md-3" method="get" action="{{ url_for('main.admin_events') }}">
+          <input type="hidden" name="sort" value="{{ admin_sort_key }}">
+          <input type="hidden" name="dir" value="{{ admin_sort_dir }}">
+          <div class="d-flex flex-column" style="min-width: 9rem; width: 12rem; max-width: 100%;">
+            <label class="form-label mb-0" for="ovGroupQ">Name contains</label>
+            <input class="form-control form-control-sm" id="ovGroupQ" name="group_q" value="{{ request.args.get('group_q', '') }}" autocomplete="off">
           </div>
-        </div>
+          <div class="d-flex flex-column" style="min-width: 9rem; width: 14rem; max-width: 100%;">
+            <label class="form-label mb-0" for="ovEmailQ">Owner email contains</label>
+            <input class="form-control form-control-sm" id="ovEmailQ" name="email_q" value="{{ request.args.get('email_q', '') }}" autocomplete="off">
+          </div>
+          <div class="d-flex flex-wrap align-items-center gap-2 pb-1">
+            <button type="submit" class="btn btn-primary btn-sm">Apply filters</button>
+            <a class="btn btn-primary btn-sm js-admin-ov-grid-reload" href="{{ url_for('main.admin_events') }}">Clear</a>
+            <button
+              type="button"
+              class="btn btn-sm btn-info text-dark text-nowrap"
+              id="adminMgBulkKwSuggestBtn"
+              title="Run AI on each selected event group’s title and description to suggest existing topic keywords to add"
+            >
+              <i class="bi bi-magic me-1" aria-hidden="true"></i>AI keywords (selected)
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <div id="adminBulkToolbarRow" class="admin-bulk-toolbar-card mb-3 d-none align-items-center gap-2 flex-nowrap overflow-x-auto" aria-hidden="true">
+        <span class="admin-bulk-toolbar-card-label small text-uppercase flex-shrink-0">Bulk actions</span>
+        <button type="button" class="btn btn-primary btn-sm text-nowrap flex-shrink-0" id="adminBulkDeleteOpen">Delete selected</button>
+        <button type="button" class="btn btn-primary btn-sm text-nowrap flex-shrink-0" id="adminBulkTransferOpen">Change ownership</button>
+        <button type="button" class="btn btn-outline-primary btn-sm text-nowrap flex-shrink-0" id="adminBulkImagesOpen">Change images</button>
+        <button type="button" class="btn btn-outline-primary btn-sm text-nowrap flex-shrink-0" id="adminBulkDetailsOpen">Change details</button>
+        <button type="button" class="btn btn-outline-primary btn-sm text-nowrap flex-shrink-0" id="adminBulkWebsiteOpen">Change website</button>
       </div>
 
       <div id="adminOverviewGridWrap" data-meeting-plural="{{ lbl_mt|e }}">
@@ -57,7 +60,6 @@
             <table class="table table-sm admin-console-table admin-console-table--dense admin-overview-data-grid align-middle">
               <thead>
                 <tr>
-                  <th scope="col"><a href="{{ admin_sort_urls.group_id }}" class="link-offset-2">ID{% if admin_sort_key == 'group_id' %} <i class="bi bi-arrow-{{ 'up' if admin_sort_dir == 'asc' else 'down' }}" aria-hidden="true"></i>{% endif %}</a></th>
                   <th scope="col"><a href="{{ admin_sort_urls.group_name }}" class="link-offset-2">Name{% if admin_sort_key == 'group_name' %} <i class="bi bi-arrow-{{ 'up' if admin_sort_dir == 'asc' else 'down' }}" aria-hidden="true"></i>{% endif %}</a></th>
                   <th scope="col"><a href="{{ admin_sort_urls.owner_email }}" class="link-offset-2">Owner email{% if admin_sort_key == 'owner_email' %} <i class="bi bi-arrow-{{ 'up' if admin_sort_dir == 'asc' else 'down' }}" aria-hidden="true"></i>{% endif %}</a></th>
                   <th scope="col" class="text-end"><a href="{{ admin_sort_urls.events }}" class="link-offset-2">Meetings{% if admin_sort_key == 'events' %} <i class="bi bi-arrow-{{ 'up' if admin_sort_dir == 'asc' else 'down' }}" aria-hidden="true"></i>{% endif %}</a></th>
@@ -93,7 +95,6 @@
                   {% set lv = row.live %}
                   {% set dr = row.draft %}
                   <tr class="admin-mg-overview-row">
-                    <td class="text-secondary small">{{ mg.meeting_group_id }}</td>
                     <td class="fw-medium">{{ mg.meeting_group_name }}</td>
                     <td class="small text-secondary">{{ owner.email if owner else '—' }}</td>
                     <td class="small text-end">{{ t }}</td>
@@ -142,8 +143,8 @@
                           <button
                             type="button"
                             class="btn btn-outline-success btn-sm px-2 py-0 js-admin-mg-desc-open"
-                            title="View / edit description"
-                            aria-label="View or edit description for {{ mg.meeting_group_name | e }}"
+                            title="Edit name, website and description"
+                            aria-label="View or edit name, website and description for {{ mg.meeting_group_name | e }}"
                             data-meeting-group-id="{{ mg.meeting_group_id }}"
                             data-desc-url="{{ url_for('main.admin_meeting_group_description', meeting_group_id=mg.meeting_group_id) }}"
                           ><i class="bi bi-card-text" aria-hidden="true"></i></button>
@@ -249,24 +250,171 @@
       </div>
     </div>
 
-  <div class="modal fade" id="adminMgDescModal" tabindex="-1" aria-labelledby="adminMgDescModalLabel" aria-hidden="true">
+  <div class="modal fade" id="adminBulkImagesModal" tabindex="-1" aria-labelledby="adminBulkImagesModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
-      <div class="modal-content tnw-modal-branded-shell {% if tnw_admin_bootstrap_light_shell %}bg-light text-dark border{% else %}bg-dark text-light border border-secondary{% endif %}">
-        {% with modal_title = 'Event group description', modal_title_id = 'adminMgDescModalLabel', use_h2_title = true %}
+      <div class="modal-content tnw-modal-branded-shell">
+        {% with modal_title = 'Change images (selected)', modal_title_id = 'adminBulkImagesModalLabel', use_h2_title = true %}
           {% include "partials/tnw_modal_header_branded.html" %}
         {% endwith %}
         <div class="modal-body">
-          <p class="small text-secondary mb-2">
-            <span class="fw-semibold" id="adminMgDescGroupName"></span>
-            <span class="ms-2">ID <span id="adminMgDescGroupId"></span></span>
+          <p class="small text-secondary mb-3" id="adminBulkImagesSummary"></p>
+          <p class="small admin-console-footer-note mb-3">Choose one image. It will be copied to every selected event group (each group keeps its own file on disk).</p>
+          <img id="adminBulkImagesPreview" class="admin-mg-img-replace-preview mb-3 d-none border" src="" alt="Preview">
+          <input type="file" id="adminBulkImagesFile" class="d-none" accept="image/jpeg,image/png,image/webp" aria-label="Choose image for selected groups">
+          <div id="adminBulkImagesDrop" class="admin-mg-img-paste-zone" tabindex="0" role="region" aria-label="Paste or drop image">
+            <span class="d-block fw-semibold">Paste or drop here</span>
+            <span class="d-block text-secondary">JPG, PNG, or WebP</span>
+          </div>
+          <p class="small admin-console-footer-note mt-2 mb-0" id="adminBulkImagesHint"></p>
+        </div>
+        <div class="modal-footer gap-2">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-outline-primary ms-auto" id="adminBulkImagesPickBtn">Choose file…</button>
+          <button type="button" class="btn btn-success" id="adminBulkImagesSaveBtn" disabled>
+            <span>Apply to selected</span>
+            <span class="spinner-border spinner-border-sm d-none ms-2" id="adminBulkImagesSaveSpin" role="status" aria-hidden="true"></span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="adminBulkDetailsModal" tabindex="-1" aria-labelledby="adminBulkDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content tnw-modal-branded-shell">
+        {% with modal_title = 'Change details (selected)', modal_title_id = 'adminBulkDetailsModalLabel', use_h2_title = true %}
+          {% include "partials/tnw_modal_header_branded.html" %}
+        {% endwith %}
+        <div class="modal-body">
+          <p class="small text-secondary mb-3" id="adminBulkDetailsSummary"></p>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold" for="adminBulkDetailsWebsiteInput">Website</label>
+            <input type="url" class="form-control" id="adminBulkDetailsWebsiteInput" maxlength="500" autocomplete="url" inputmode="url" placeholder="https://example.com">
+            <div class="form-text small mb-0">Leave blank to remove the website on all selected groups.</div>
+          </div>
+          <label class="form-label small fw-semibold" id="adminBulkDetailsLabel" for="adminBulkDetailsEditor">Description</label>
+          <div class="btn-toolbar gap-2 mb-2" role="toolbar" aria-label="Description formatting">
+            <div class="btn-group btn-group-sm" role="group">
+              <button type="button" class="btn btn-outline-secondary js-rich-format-btn" data-rich-target="adminBulkDetailsEditor" data-format-action="bold" title="Bold"><strong>B</strong></button>
+              <button type="button" class="btn btn-outline-secondary js-rich-format-btn" data-rich-target="adminBulkDetailsEditor" data-format-action="italic" title="Italic"><em>I</em></button>
+              <button type="button" class="btn btn-outline-secondary js-rich-format-btn" data-rich-target="adminBulkDetailsEditor" data-format-action="underline" title="Underline"><span class="text-decoration-underline">U</span></button>
+            </div>
+            <div class="btn-group btn-group-sm" role="group">
+              <button type="button" class="btn btn-outline-secondary js-rich-format-btn" data-rich-target="adminBulkDetailsEditor" data-format-action="bullet"><i class="bi bi-list-ul me-1" aria-hidden="true"></i>Bullets</button>
+              <button type="button" class="btn btn-outline-secondary js-rich-format-btn" data-rich-target="adminBulkDetailsEditor" data-format-action="numbered"><i class="bi bi-list-ol me-1" aria-hidden="true"></i>Numbers</button>
+            </div>
+          </div>
+          <textarea class="d-none js-rich-text-input" id="adminBulkDetailsTextarea" maxlength="20000" aria-hidden="true" tabindex="-1"></textarea>
+          <div class="form-control rich-text-editor js-rich-text-editor" id="adminBulkDetailsEditor" data-rich-input="adminBulkDetailsTextarea" contenteditable="true" role="textbox" aria-multiline="true" aria-labelledby="adminBulkDetailsLabel" data-placeholder="Description for all selected groups…"></div>
+          <p class="small admin-console-footer-note mt-2 mb-0" id="adminBulkDetailsHint"></p>
+        </div>
+        <div class="modal-footer gap-2">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-success" id="adminBulkDetailsSaveBtn">
+            <span>Apply to selected</span>
+            <span class="spinner-border spinner-border-sm d-none ms-2" id="adminBulkDetailsSaveSpin" role="status" aria-hidden="true"></span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="adminBulkWebsiteModal" tabindex="-1" aria-labelledby="adminBulkWebsiteModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content tnw-modal-branded-shell">
+        {% with modal_title = 'Change website (selected)', modal_title_id = 'adminBulkWebsiteModalLabel', use_h2_title = true %}
+          {% include "partials/tnw_modal_header_branded.html" %}
+        {% endwith %}
+        <div class="modal-body">
+          <p class="small text-secondary mb-3" id="adminBulkWebsiteSummary"></p>
+          <label class="form-label small fw-semibold" for="adminBulkWebsiteInput">Website</label>
+          <input type="url" class="form-control" id="adminBulkWebsiteInput" maxlength="500" autocomplete="url" inputmode="url" placeholder="https://example.com">
+          <div class="form-text small mb-0">Leave blank to remove the website on all selected groups.</div>
+          <p class="small admin-console-footer-note mt-2 mb-0" id="adminBulkWebsiteHint"></p>
+        </div>
+        <div class="modal-footer gap-2">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-success" id="adminBulkWebsiteSaveBtn">
+            <span>Apply to selected</span>
+            <span class="spinner-border spinner-border-sm d-none ms-2" id="adminBulkWebsiteSaveSpin" role="status" aria-hidden="true"></span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="adminMgDescModal" tabindex="-1" aria-labelledby="adminMgDescModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content tnw-modal-branded-shell">
+        {% with modal_title = 'Edit event group', modal_title_id = 'adminMgDescModalLabel', use_h2_title = true %}
+          {% include "partials/tnw_modal_header_branded.html" %}
+        {% endwith %}
+        <div class="modal-body">
+          <p class="small text-secondary mb-3">
+            ID <span id="adminMgDescGroupId"></span>
             <span class="ms-2" id="adminMgDescOwnerEmail"></span>
           </p>
-          <label class="form-label small fw-semibold" for="adminMgDescTextarea">Description</label>
-          <textarea class="form-control" id="adminMgDescTextarea" rows="8" maxlength="20000" placeholder="No description yet."></textarea>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold" for="adminMgDescNameInput">Name</label>
+            <input
+              type="text"
+              class="form-control"
+              id="adminMgDescNameInput"
+              maxlength="180"
+              autocomplete="off"
+              placeholder="Event group name"
+            >
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold" for="adminMgDescWebsiteInput">Website</label>
+            <input
+              type="url"
+              class="form-control"
+              id="adminMgDescWebsiteInput"
+              maxlength="500"
+              autocomplete="url"
+              inputmode="url"
+              placeholder="https://example.com"
+            >
+            <div class="form-text small mb-0">Optional. Leave blank to remove the link.</div>
+          </div>
+          <label class="form-label small fw-semibold" id="adminMgDescLabel" for="adminMgDescEditor">Description</label>
+          <div class="btn-toolbar gap-2 mb-2" role="toolbar" aria-label="Description formatting">
+            <div class="btn-group btn-group-sm" role="group" aria-label="Text style">
+              <button type="button" class="btn btn-outline-secondary js-rich-format-btn" data-rich-target="adminMgDescEditor" data-format-action="bold" title="Bold">
+                <strong>B</strong>
+              </button>
+              <button type="button" class="btn btn-outline-secondary js-rich-format-btn" data-rich-target="adminMgDescEditor" data-format-action="italic" title="Italic">
+                <em>I</em>
+              </button>
+              <button type="button" class="btn btn-outline-secondary js-rich-format-btn" data-rich-target="adminMgDescEditor" data-format-action="underline" title="Underline">
+                <span class="text-decoration-underline">U</span>
+              </button>
+            </div>
+            <div class="btn-group btn-group-sm" role="group" aria-label="Lists">
+              <button type="button" class="btn btn-outline-secondary js-rich-format-btn" data-rich-target="adminMgDescEditor" data-format-action="bullet">
+                <i class="bi bi-list-ul me-1" aria-hidden="true"></i>Bullets
+              </button>
+              <button type="button" class="btn btn-outline-secondary js-rich-format-btn" data-rich-target="adminMgDescEditor" data-format-action="numbered">
+                <i class="bi bi-list-ol me-1" aria-hidden="true"></i>Numbers
+              </button>
+            </div>
+          </div>
+          <textarea class="d-none js-rich-text-input" id="adminMgDescTextarea" maxlength="20000" aria-hidden="true" tabindex="-1"></textarea>
+          <div
+            class="form-control rich-text-editor js-rich-text-editor"
+            id="adminMgDescEditor"
+            data-rich-input="adminMgDescTextarea"
+            contenteditable="true"
+            role="textbox"
+            aria-multiline="true"
+            aria-labelledby="adminMgDescLabel"
+            data-placeholder="No description yet."
+          ></div>
           <p class="small admin-console-footer-note mt-2 mb-0" id="adminMgDescHint"></p>
         </div>
-        <div class="modal-footer {% if tnw_admin_bootstrap_light_shell %}border-secondary border-opacity-25{% else %}border-secondary{% endif %} gap-2">
-          <button type="button" class="btn {% if tnw_admin_bootstrap_light_shell %}btn-outline-secondary{% else %}btn-outline-light{% endif %}" data-bs-dismiss="modal">Close</button>
+        <div class="modal-footer gap-2">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
           <button type="button" class="btn btn-success" id="adminMgDescSaveBtn">
             <span>Save</span>
             <span class="spinner-border spinner-border-sm d-none ms-2" id="adminMgDescSaveSpin" role="status" aria-hidden="true"></span>

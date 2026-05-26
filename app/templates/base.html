@@ -1,73 +1,30 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="{% block html_class %}{% endblock %}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='images/favicon.png') }}">
   <link rel="apple-touch-icon" href="{{ url_for('static', filename='images/favicon.png') }}">
   <meta name="theme-color" content="#5d2e87">
+  {% block meta_robots %}{% endblock %}
   <title>{% block title %}The Networker{% endblock %}</title>
+  {% block bootstrap_stylesheet %}
   <link href="{{ tnw_site_bootstrap_theme_href }}" rel="stylesheet">
+  {% endblock %}
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  {% block site_styles %}
   <link href="{{ url_for('static', filename='css/site.css') }}" rel="stylesheet">
+  {% endblock %}
   {% block extra_head %}{% endblock %}
 </head>
-<body>
-  <header class="site-header navbar navbar-expand-lg navbar-light bg-white border-bottom">
-    <div class="container flex-wrap gap-2">
-      <a class="navbar-brand site-logo-link py-2" href="{{ url_for('main.home') }}">
-        {% include "partials/tnw_wordmark_logo.html" %}
-      </a>
-      <button
-        class="navbar-toggler border-secondary"
-        type="button"
-        data-bs-toggle="collapse"
-        data-bs-target="#siteNav"
-        aria-controls="siteNav"
-        aria-expanded="false"
-        aria-label="Toggle navigation"
-      >
-        <span class="navbar-toggler-icon"></span>
-      </button>
-      <div class="collapse navbar-collapse" id="siteNav">
-        <ul class="navbar-nav me-auto gap-lg-1 flex-wrap align-items-lg-center">
-          {% if current_user and current_user.admin_user %}
-          <li class="nav-item">
-            <a class="nav-link" href="{{ url_for('main.admin_events') }}">Admin</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="{{ url_for('main.keyword_maintenance') }}">Keywords</a>
-          </li>
-          {% endif %}
-        </ul>
-        <ul class="navbar-nav ms-auto gap-lg-2 flex-wrap align-items-lg-center">
-          <li class="nav-item py-1">
-            {% with
-              theme_form_action=url_for('main.set_site_bootstrap_theme'),
-              tnw_bootstrap_theme=tnw_bootstrap_theme,
-              tnw_bootstrap_theme_choices=tnw_bootstrap_theme_choices,
-              theme_label='Bootstrap theme',
-              theme_label_muted=true,
-              theme_select_id='siteBootstrapThemeSelect'
-            %}
-              {% include "partials/tnw_bootstrap_theme_picker.html" %}
-            {% endwith %}
-          </li>
-          {% if current_user %}
-          <li class="nav-item">
-            <a class="nav-link" href="{{ url_for('main.logout') }}">Sign out</a>
-          </li>
-          {% else %}
-          <li class="nav-item">
-            <a class="nav-link" href="{{ url_for('main.login') }}">Sign in</a>
-          </li>
-          {% endif %}
-        </ul>
-      </div>
-    </div>
-  </header>
+<body class="{% block body_class %}tnw-maint-app{% endblock %}">
+  {% block site_header %}
+    {% include "partials/tnw_maint_header.html" %}
+  {% endblock %}
 
-  <main class="container my-4 my-md-5 tnw-public-main">
+  {% block main_shell %}
+  <main class="{% block main_class %}container my-4 my-md-5 tnw-public-main{% endblock %}">
+    {% block flash_messages %}
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
         {% for category, message in messages %}
@@ -84,8 +41,14 @@
         {% endfor %}
       {% endif %}
     {% endwith %}
+    {% endblock %}
     {% block content %}{% endblock %}
   </main>
+  {% endblock %}
+
+  {% block site_footer %}
+    {% include "partials/tnw_maint_footer.html" %}
+  {% endblock %}
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   {% block extra_scripts %}{% endblock %}

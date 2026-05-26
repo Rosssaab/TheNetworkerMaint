@@ -4,6 +4,15 @@ body {
   min-height: 100vh;
 }
 
+body.tnw-maint-app {
+  display: flex;
+  flex-direction: column;
+}
+
+body.tnw-maint-app main {
+  flex: 1 0 auto;
+}
+
 body {
   background:
     radial-gradient(circle at top, rgba(255, 255, 255, 0.5), transparent 24%),

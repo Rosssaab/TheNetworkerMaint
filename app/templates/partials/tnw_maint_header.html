@@ -1,0 +1,59 @@
+{% set lbl_mg = table_label('event_groups', 'Event groups') %}
+{% set ov_kw = admin_overview_nav_kwargs|default({}) %}
+{% set kw_nav = admin_ignore_test_users_nav|default({}) %}
+{% set users_kw = admin_users_nav_kwargs|default({}) %}
+{% set move_kw = admin_move_events_nav_kwargs|default({}) %}
+<header class="tnw-maint-header admin-console-topbar">
+  <nav class="navbar navbar-expand {% if tnw_bootswatch_theme_active %}border-bottom{% elif tnw_admin_bootstrap_light_shell %}navbar-light bg-light border-bottom shadow-sm{% else %}navbar-dark{% endif %}">
+    <div class="container-fluid px-2 px-sm-3 px-xl-4 admin-events-main-wide">
+      <a class="navbar-brand tnw-maint-brand py-2 me-2" href="{{ url_for('main.admin_events') }}">
+        {% with logo_class='site-logo tnw-maint-logo', logo_decorative=false %}
+          {% include "partials/tnw_wordmark_logo.html" %}
+        {% endwith %}
+      </a>
+      <div class="navbar-collapse align-items-lg-center" id="tnwMaintNav">
+        {% if admin_nav_active is defined and current_user %}
+        <ul class="nav nav-pills admin-console-tabs tnw-maint-nav mb-2 mb-lg-0 flex-grow-1 justify-content-lg-center flex-wrap" id="adminFunctionsNav" role="navigation" aria-label="Admin sections">
+          <li class="nav-item">
+            <a
+              class="nav-link {% if admin_nav_active == 'overview' %}active{% endif %}"
+              href="{{ url_for('main.admin_events', **ov_kw) }}"
+            ><i class="bi bi-collection me-1" aria-hidden="true"></i>{{ lbl_mg }}</a>
+          </li>
+          <li class="nav-item">
+            <a
+              class="nav-link {% if admin_nav_active == 'keywords' %}active{% endif %}"
+              href="{{ url_for('main.admin_keywords', **kw_nav) }}"
+            ><i class="bi bi-tags-fill me-1" aria-hidden="true"></i>Keywords</a>
+          </li>
+          <li class="nav-item">
+            <a
+              class="nav-link {% if admin_nav_active == 'users' %}active{% endif %}"
+              href="{{ url_for('main.admin_users', **users_kw) }}"
+            ><i class="bi bi-people me-1" aria-hidden="true"></i>Users</a>
+          </li>
+          <li class="nav-item">
+            <a
+              class="nav-link {% if admin_nav_active == 'move_events' %}active{% endif %}"
+              href="{{ url_for('main.admin_move_events', **move_kw) }}"
+            ><i class="bi bi-folder-symlink me-1" aria-hidden="true"></i>Move events</a>
+          </li>
+          <li class="nav-item">
+            <a
+              class="nav-link {% if admin_nav_active == 'delete_group_events' %}active{% endif %}"
+              href="{{ url_for('main.admin_delete_group_events') }}"
+            ><i class="bi bi-trash3 me-1" aria-hidden="true"></i>Delete group events</a>
+          </li>
+        </ul>
+        {% endif %}
+        {% if not current_user and request.endpoint != 'main.login' %}
+        <ul class="navbar-nav ms-lg-auto gap-lg-1 flex-wrap align-items-lg-center">
+          <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('main.login') }}">Sign in</a>
+          </li>
+        </ul>
+        {% endif %}
+      </div>
+    </div>
+  </nav>
+</header>
