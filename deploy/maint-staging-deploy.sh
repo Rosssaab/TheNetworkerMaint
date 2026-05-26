@@ -40,11 +40,26 @@ if ! systemctl cat "$SERVICE" &>/dev/null; then
 fi
 
 echo "==> restart $SERVICE"
-if ! sudo -n systemctl restart "$SERVICE"; then
-  echo "ERROR: passwordless sudo required for: systemctl restart $SERVICE"
+if ! sudo -n systemctl stop "$SERVICE" 2>/dev/null; then
+  echo "WARN: could not stop $SERVICE (may not be running yet)"
+fi
+# Orphan gunicorn/python processes can keep :8104 after a failed restart, so systemd
+# reports success while the site still runs stale code.
+if command -v fuser >/dev/null 2>&1; then
+  sudo -n fuser -k 8104/tcp >/dev/null 2>&1 || true
+elif command -v ss >/dev/null 2>&1; then
+  orphan_pids=$(ss -tlnp 2>/dev/null | awk '/127.0.0.1:8104/ { while (match($0, /pid=[0-9]+/)) { print substr($0, RSTART+4, RLENGTH-4); $0=substr($0, RSTART+RLENGTH) } }' | sort -u)
+  if [ -n "${orphan_pids:-}" ]; then
+    echo "WARN: killing orphan listener(s) on :8104: $orphan_pids"
+    kill $orphan_pids 2>/dev/null || sudo -n kill $orphan_pids 2>/dev/null || true
+  fi
+fi
+sleep 1
+if ! sudo -n systemctl start "$SERVICE"; then
+  echo "ERROR: passwordless sudo required for: systemctl start $SERVICE"
   echo "  One-time on VPS: cd $APP_DIR && bash deploy/install-systemd-service.sh"
   echo "  Or add sudoers, e.g.:"
-  echo "  ubuntu ALL=(ALL) NOPASSWD: /bin/systemctl restart the-networker-maint, /bin/systemctl is-active the-networker-maint"
+  echo "  ubuntu ALL=(ALL) NOPASSWD: /bin/systemctl restart the-networker-maint, /bin/systemctl start the-networker-maint, /bin/systemctl stop the-networker-maint, /bin/systemctl is-active the-networker-maint, /usr/bin/fuser"
   exit 1
 fi
 
