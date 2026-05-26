@@ -3,17 +3,17 @@
 {% set kw_nav = admin_ignore_test_users_nav|default({}) %}
 {% set users_kw = admin_users_nav_kwargs|default({}) %}
 {% set move_kw = admin_move_events_nav_kwargs|default({}) %}
-<header class="tnw-maint-header admin-console-topbar">
-  <nav class="navbar navbar-expand {% if tnw_bootswatch_theme_active %}border-bottom{% elif tnw_admin_bootstrap_light_shell %}navbar-light bg-light border-bottom shadow-sm{% else %}navbar-dark{% endif %}">
-    <div class="container-fluid px-2 px-sm-3 px-xl-4 admin-events-main-wide">
-      <a class="navbar-brand tnw-maint-brand py-2 me-2" href="{{ url_for('main.admin_events') }}">
+<header class="tnw-maint-header">
+  <div class="container-fluid px-2 px-sm-3 px-xl-4 admin-events-main-wide">
+    <div class="d-flex flex-wrap align-items-center gap-2 gap-lg-3 py-1">
+      <a class="tnw-maint-brand flex-shrink-0" href="{{ url_for('main.admin_events') }}">
         {% with logo_class='site-logo tnw-maint-logo', logo_decorative=false %}
           {% include "partials/tnw_wordmark_logo.html" %}
         {% endwith %}
       </a>
-      <div class="navbar-collapse align-items-lg-center" id="tnwMaintNav">
-        {% if admin_nav_active is defined and current_user %}
-        <ul class="nav nav-pills admin-console-tabs tnw-maint-nav mb-2 mb-lg-0 flex-grow-1 justify-content-lg-center flex-wrap" id="adminFunctionsNav" role="navigation" aria-label="Admin sections">
+      {% if admin_nav_active is defined and current_user %}
+      <nav class="tnw-maint-nav flex-grow-1" id="tnwMaintNav" aria-label="Admin sections">
+        <ul class="nav nav-pills admin-console-tabs tnw-maint-nav-pills mb-0 flex-wrap justify-content-lg-center" id="adminFunctionsNav">
           <li class="nav-item">
             <a
               class="nav-link {% if admin_nav_active == 'overview' %}active{% endif %}"
@@ -45,15 +45,13 @@
             ><i class="bi bi-trash3 me-1" aria-hidden="true"></i>Delete group events</a>
           </li>
         </ul>
-        {% endif %}
-        {% if not current_user and request.endpoint != 'main.login' %}
-        <ul class="navbar-nav ms-lg-auto gap-lg-1 flex-wrap align-items-lg-center">
-          <li class="nav-item">
-            <a class="nav-link" href="{{ url_for('main.login') }}">Sign in</a>
-          </li>
-        </ul>
-        {% endif %}
+      </nav>
+      {% endif %}
+      {% if not current_user and request.endpoint != 'main.login' %}
+      <div class="ms-lg-auto">
+        <a class="tnw-maint-header-link small" href="{{ url_for('main.login') }}">Sign in</a>
       </div>
+      {% endif %}
     </div>
-  </nav>
+  </div>
 </header>
