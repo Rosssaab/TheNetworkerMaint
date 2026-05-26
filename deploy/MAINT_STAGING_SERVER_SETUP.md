@@ -20,7 +20,7 @@ If the app dir is not a git clone, deploy uses `git archive` from your PC. Prese
 
    First deploy also runs `deploy/install-systemd-service.sh`, which needs `sudo cp` to `/etc/systemd/system/`.
 
-3. **Optional:** nginx vhost for admin subdomain → `127.0.0.1:8104`
+3. **Optional:** nginx vhost for admin subdomain → `127.0.0.1:8104`. If nginx serves `/static/` from the **main** site tree, maint-only files such as `admin_console.css` will 404 — point `/static/` at `maint/app/static/` instead (see `deploy/nginx-maint.example.conf`). The maint app also serves those files at `/admin/_static/...` as a fallback.
 
 ## Manual service install
 

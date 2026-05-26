@@ -71,6 +71,7 @@ from flask import (
     render_template,
     request,
     send_file,
+    send_from_directory,
     session,
     url_for,
 )
@@ -8454,6 +8455,24 @@ def set_admin_bootstrap_theme():
 # ---------------------------------------------------------------------------
 # Admin preview (reads a file off disk, no DB)
 # ---------------------------------------------------------------------------
+@bp.route("/admin/_static/<path:filename>")
+def admin_maint_static(filename: str):
+    """Serve maint-app static files via gunicorn.
+
+    On the VPS, nginx often aliases ``/static/`` to the main site's static tree,
+    so maint-only assets (e.g. admin_console.css) 404 there. This path is proxied
+    to the maint app instead.
+    """
+    safe = filename.replace("\\", "/").lstrip("/")
+    if not safe or ".." in safe.split("/"):
+        abort(404)
+    static_root = os.path.normpath(os.path.join(current_app.root_path, "static"))
+    full = os.path.normpath(os.path.join(static_root, safe))
+    if full != static_root and not full.startswith(static_root + os.sep):
+        abort(404)
+    return send_from_directory(static_root, safe, conditional=True)
+
+
 @bp.route("/admin")
 @site_admin_required
 def admin_preview():
