@@ -83,4 +83,6 @@ Staging merge + server deploy (after one-time copy of `deploy\maint-staging-ssh.
 PushToMaintStaging.bat "optional commit message"
 ```
 
+See `deploy\MAINT_STAGING_SERVER_SETUP.md` for VPS one-time setup (`.env`, systemd, nginx).
+
 `PushToMain.bat` is a wrapper that calls `PushToMaint.bat`.

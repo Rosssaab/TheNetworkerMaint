@@ -1,0 +1,21 @@
+# Install: bash deploy/install-systemd-service.sh
+# Uses Gunicorn WSGI. config.py loads `.env` from WorkingDirectory.
+
+[Unit]
+Description=The Networker Admin Maint (Flask + Gunicorn)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/PythonRoot/maint
+Environment=PYTHONUNBUFFERED=1
+Environment=PATH=/home/ubuntu/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ExecStart=/usr/bin/python3 -m gunicorn --bind 127.0.0.1:8104 --workers 2 --timeout 120 --access-logfile - --error-logfile - --capture-output wsgi:application
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
