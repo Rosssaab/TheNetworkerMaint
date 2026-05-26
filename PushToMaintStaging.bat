@@ -128,6 +128,7 @@ if errorlevel 1 (
 )
 call :discard_generated_caches
 call :drop_jinja_bytecode_from_git_index
+call :drop_upload_static_from_git_index
 git diff --cached --quiet
 if errorlevel 1 (
   git commit -m "Remove Jinja bytecode from version control"
@@ -226,6 +227,16 @@ git ls-files instance/jinja_bytecode 2>nul | findstr /r "." >nul 2>&1
 if not errorlevel 1 (
   echo Removing tracked Jinja bytecode from git index...
   git rm -r --cached -f instance/jinja_bytecode 2>nul
+)
+exit /b 0
+
+:drop_upload_static_from_git_index
+for %%D in (meeting_group_images event_images user_images) do (
+  git ls-files "app/static/%%D" 2>nul | findstr /r "." >nul 2>&1
+  if not errorlevel 1 (
+    echo Removing tracked upload files from git index: app/static/%%D
+    git rm -r --cached -f "app/static/%%D" 2>nul
+  )
 )
 exit /b 0
 
