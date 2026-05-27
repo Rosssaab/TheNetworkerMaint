@@ -9261,6 +9261,17 @@ def _meeting_group_image_dir_abs() -> str:
     return os.path.join(current_app.root_path, "static", "meeting_group_images")
 
 
+def _mg_image_debug(tag: str, msg: str, **fields) -> None:
+    """Print meeting-group image diagnostics to the terminal (and app log)."""
+    extra = " ".join(f"{k}={v!r}" for k, v in fields.items())
+    line = f"[mg-image:{tag}] {msg}" + (f" {extra}" if extra else "")
+    print(line, flush=True)
+    try:
+        current_app.logger.info(line)
+    except RuntimeError:
+        pass
+
+
 def _stored_meeting_group_image_abs_path(filename: str) -> str | None:
     """Resolve a stored meeting_group_images filename to an absolute path under static, or None if unsafe."""
     fn = (filename or "").strip()
@@ -9296,7 +9307,8 @@ def admin_meeting_group_image_replace(meeting_group_id: int):
     except Exception:
         pass
 
-    os.makedirs(MEETING_GROUP_IMAGE_DIR, exist_ok=True)
+    image_dir = _meeting_group_image_dir_abs()
+    image_dir_real = os.path.realpath(image_dir)
     stored = (mg.image_filename or "").strip()
     in_place = bool(stored)
     if in_place:
@@ -9307,19 +9319,79 @@ def admin_meeting_group_image_replace(meeting_group_id: int):
     else:
         uid = int(mg.user_id)
         out_fn = f"mg_{uid}_{int(datetime.utcnow().timestamp())}.png"
-        target_path = os.path.join(MEETING_GROUP_IMAGE_DIR, out_fn)
+        target_path = os.path.join(image_dir, out_fn)
 
+    staging_path = None
+    if stored:
+        staging_static = os.environ.get("TNW_MAIN_STATIC_DIR", "").strip()
+        if staging_static:
+            staging_path = os.path.join(staging_static, "meeting_group_images", os.path.basename(stored))
+        else:
+            sibling = os.path.join(
+                os.path.dirname(os.path.dirname(current_app.root_path)),
+                "staging",
+                "app",
+                "static",
+                "meeting_group_images",
+                os.path.basename(stored),
+            )
+            if os.path.isfile(sibling):
+                staging_path = sibling
+
+    before_size = os.path.getsize(target_path) if os.path.isfile(target_path) else None
+    staging_size = os.path.getsize(staging_path) if staging_path and os.path.isfile(staging_path) else None
+    _mg_image_debug(
+        "replace",
+        "request",
+        meeting_group_id=meeting_group_id,
+        stored=stored or None,
+        in_place=in_place,
+        root_path=current_app.root_path,
+        cwd=os.getcwd(),
+        image_dir=image_dir,
+        image_dir_realpath=image_dir_real,
+        is_symlink=os.path.islink(image_dir),
+        target_path=target_path,
+        target_exists=os.path.isfile(target_path),
+        before_bytes=before_size,
+        staging_path=staging_path,
+        staging_bytes=staging_size,
+        paths_match=bool(
+            staging_path
+            and os.path.isfile(target_path)
+            and os.path.samefile(target_path, staging_path)
+        ) if staging_path and os.path.isfile(target_path) and os.path.isfile(staging_path) else False,
+    )
+
+    os.makedirs(image_dir, exist_ok=True)
     try:
         _resize_meeting_group_image(img, target_path)
     except UnidentifiedImageError:
+        _mg_image_debug("replace", "rejected", reason="unidentified image")
         return jsonify(ok=False, error="That file is not a valid image (JPG, PNG, or WEBP)."), 400
     except Exception:
         current_app.logger.exception("admin_meeting_group_image_replace")
+        _mg_image_debug("replace", "failed", error="see traceback above")
         return jsonify(ok=False, error="Could not process the image."), 500
+
+    after_size = os.path.getsize(target_path) if os.path.isfile(target_path) else None
+    staging_after = os.path.getsize(staging_path) if staging_path and os.path.isfile(staging_path) else None
+    _mg_image_debug(
+        "replace",
+        "written",
+        meeting_group_id=meeting_group_id,
+        out_fn=out_fn,
+        target_path=target_path,
+        after_bytes=after_size,
+        staging_path=staging_path,
+        staging_after_bytes=staging_after,
+        staging_updated=after_size is not None and staging_after == after_size if staging_path else None,
+    )
 
     if not in_place:
         mg.image_filename = out_fn
         db.session.commit()
+        _mg_image_debug("replace", "db committed", image_filename=out_fn)
 
     image_url = url_for("static", filename=f"meeting_group_images/{out_fn}")
     return jsonify(
@@ -9406,6 +9478,12 @@ def admin_meeting_group_description(meeting_group_id: int):
 def admin_meeting_groups_bulk_image():
     """Apply one uploaded banner image to every selected event group."""
     ids = _admin_bulk_meeting_group_ids_from_form()
+    _mg_image_debug("bulk", "request",
+        ids=ids,
+        root_path=current_app.root_path,
+        cwd=os.getcwd(),
+        form_keys=sorted(request.form.keys()),
+    )
     if not ids:
         return jsonify(ok=False, error="Select at least one event group."), 400
     img = request.files.get("image")
@@ -9413,22 +9491,47 @@ def admin_meeting_groups_bulk_image():
         return jsonify(ok=False, error="No image uploaded."), 400
 
     groups = MeetingGroup.query.filter(MeetingGroup.meeting_group_id.in_(ids)).all()
+    found_ids = [int(mg.meeting_group_id) for mg in groups]
+    missing_ids = sorted(set(ids) - set(found_ids))
+    _mg_image_debug("bulk",
+        "groups loaded",
+        requested=len(ids),
+        found=len(groups),
+        missing_ids=missing_ids,
+    )
     if not groups:
         return jsonify(ok=False, error="No matching event groups were found."), 404
 
     image_dir = _meeting_group_image_dir_abs()
+    image_dir_real = os.path.realpath(image_dir)
+    _mg_image_debug("bulk",
+        "image dir",
+        image_dir=image_dir,
+        realpath=image_dir_real,
+        is_symlink=os.path.islink(image_dir),
+        exists=os.path.isdir(image_dir),
+        writable=os.access(image_dir, os.W_OK) if os.path.isdir(image_dir) else None,
+    )
     os.makedirs(image_dir, exist_ok=True)
     tmp_path = None
     try:
         with tempfile.NamedTemporaryFile(delete=False, suffix=".upload") as tmp:
             img.save(tmp.name)
             tmp_path = tmp.name
+        tmp_size = os.path.getsize(tmp_path) if os.path.isfile(tmp_path) else 0
+        _mg_image_debug("bulk",
+            "upload saved",
+            tmp_path=tmp_path,
+            bytes=tmp_size,
+            filename=(getattr(img, "filename", None) or ""),
+        )
         try:
             probe_path = tmp_path + ".probe.png"
             _resize_meeting_group_image_from_path(tmp_path, probe_path)
             if os.path.isfile(probe_path):
                 os.remove(probe_path)
         except UnidentifiedImageError:
+            _mg_image_debug("bulk","upload rejected", reason="unidentified image")
             return jsonify(
                 ok=False, error="That file is not a valid image (JPG, PNG, or WEBP)."
             ), 400
@@ -9437,21 +9540,50 @@ def admin_meeting_groups_bulk_image():
         results: list[dict] = []
         for mg in groups:
             stored = (mg.image_filename or "").strip()
-            in_place = bool(stored and _stored_meeting_group_image_abs_path(stored))
+            resolved = _stored_meeting_group_image_abs_path(stored) if stored else None
+            file_existed = bool(resolved and os.path.isfile(resolved))
+            in_place = bool(stored and resolved)
             if in_place:
-                target_path = _stored_meeting_group_image_abs_path(stored)
+                target_path = resolved
                 out_fn = stored
             else:
                 out_fn = f"mg_{int(mg.user_id)}_{ts_base}_{int(mg.meeting_group_id)}.png"
                 target_path = os.path.join(image_dir, out_fn)
+            before_size = (
+                os.path.getsize(target_path) if target_path and os.path.isfile(target_path) else None
+            )
+            _mg_image_debug("bulk",
+                "group before write",
+                meeting_group_id=int(mg.meeting_group_id),
+                name=(mg.meeting_group_name or "")[:80],
+                stored=stored or None,
+                in_place=in_place,
+                file_existed=file_existed,
+                target_path=target_path,
+                before_bytes=before_size,
+                db_will_update=not in_place,
+            )
             if not target_path:
                 return jsonify(
                     ok=False,
                     error=f"Could not resolve image path for group {mg.meeting_group_id}.",
                 ), 400
             _resize_meeting_group_image_from_path(tmp_path, target_path)
+            after_size = (
+                os.path.getsize(target_path) if os.path.isfile(target_path) else None
+            )
+            after_exists = os.path.isfile(target_path)
             if not in_place:
                 mg.image_filename = out_fn
+            _mg_image_debug("bulk",
+                "group after write",
+                meeting_group_id=int(mg.meeting_group_id),
+                out_fn=out_fn,
+                target_path=target_path,
+                exists=after_exists,
+                after_bytes=after_size,
+                image_filename_now=(mg.image_filename or ""),
+            )
             results.append(
                 {
                     "meeting_group_id": int(mg.meeting_group_id),
@@ -9462,10 +9594,12 @@ def admin_meeting_groups_bulk_image():
                 }
             )
         db.session.commit()
+        _mg_image_debug("bulk","commit ok", updated=len(results))
         return jsonify(ok=True, updated=len(results), results=results)
     except Exception:
         db.session.rollback()
         current_app.logger.exception("admin_meeting_groups_bulk_image")
+        _mg_image_debug("bulk","failed", error="see traceback above")
         return jsonify(ok=False, error="Could not apply the image."), 500
     finally:
         if tmp_path and os.path.isfile(tmp_path):
