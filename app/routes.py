@@ -285,6 +285,15 @@ def _session_site_admin_user():
     return u
 
 
+def _admin_json_require_site_admin():
+    """JSON guard for maint/admin API routes (supports env login without ``user_id``)."""
+    if not _session_is_signed_in():
+        return jsonify(ok=False, error="Please sign in."), 401
+    if not _session_site_admin_user():
+        return jsonify(ok=False, error="Only site administrators can use this."), 403
+    return None
+
+
 def _session_clear_login():
     session.pop("user_id", None)
     session.pop(SESSION_IMPERSONATOR_ADMIN_ID, None)
@@ -5988,11 +5997,9 @@ def _admin_move_events_redirect_clean():
 @bp.route("/admin/meeting-groups/lookup-for-move", methods=["GET"])
 def admin_meeting_groups_lookup_for_move():
     """JSON: event groups whose name contains ``q`` (admin move-events flow)."""
-    uid = session.get("user_id")
-    if not uid:
-        return jsonify(ok=False, error="Please sign in."), 401
-    if not _session_site_admin_user():
-        return jsonify(ok=False, error="Only site administrators can use this."), 403
+    denied = _admin_json_require_site_admin()
+    if denied is not None:
+        return denied
 
     q = (request.args.get("q") or "").strip()
     if len(q) < 1:
@@ -6091,14 +6098,9 @@ def admin_meetings_move_to_group():
 @bp.route("/admin/meeting-groups/provision-transfer-user", methods=["POST"])
 def admin_meeting_groups_provision_transfer_user():
     """Create an unverified organiser account for bulk transfer (site admins, JSON)."""
-    uid = session.get("user_id")
-    if not uid:
-        return jsonify(ok=False, error="Please sign in."), 401
-    if not User.query.get(uid):
-        session.pop("user_id", None)
-        return jsonify(ok=False, error="Please sign in again."), 401
-    if not _session_site_admin_user():
-        return jsonify(ok=False, error="Only site administrators can use this."), 403
+    denied = _admin_json_require_site_admin()
+    if denied is not None:
+        return denied
     payload = request.get_json(silent=True) or {}
     username = (payload.get("username") or "").strip()
     email = (payload.get("email") or "").strip().lower()
@@ -7060,24 +7062,21 @@ def admin_keywords_suggest():
     Uses all event groups in the DB for the corpus (admin Keywords topic checkboxes only filter
     the on-page keyword list, not this endpoint).
     """
-    uid = session.get("user_id")
-    if not uid:
-        return jsonify(ok=False, error="Please sign in."), 401
-    if not User.query.get(uid):
-        session.pop("user_id", None)
-        return jsonify(ok=False, error="Please sign in again."), 401
-    if not _session_site_admin_user():
-        return jsonify(ok=False, error="Only site administrators can use this."), 403
+    denied = _admin_json_require_site_admin()
+    if denied is not None:
+        return denied
 
     log = current_app.logger
     t_req = time_mod.perf_counter()
+    admin_actor = _session_site_admin_user()
+    actor_label = getattr(admin_actor, "email", None) or getattr(admin_actor, "username", "admin")
     print(
-        f"[admin_keywords_suggest] Step 1: start user_id={uid} — building corpus from all event groups…",
+        f"[admin_keywords_suggest] Step 1: start actor={actor_label!r} — building corpus from all event groups…",
         flush=True,
     )
     log.info(
-        "admin_keywords_suggest: start user_id=%s (building corpus and tag list)",
-        uid,
+        "admin_keywords_suggest: start actor=%s (building corpus and tag list)",
+        actor_label,
     )
 
     corpus, meta = _admin_event_group_keyword_corpus()
@@ -7757,14 +7756,9 @@ def _admin_suggest_keywords_one_meeting_group(
 @bp.route("/admin/meeting-groups/suggest-keywords", methods=["POST"])
 def admin_meeting_groups_suggest_keywords():
     """AI: suggest existing tags from each group's description (site admins; skips empty descriptions)."""
-    uid = session.get("user_id")
-    if not uid:
-        return jsonify(ok=False, error="Please sign in."), 401
-    if not User.query.get(uid):
-        session.pop("user_id", None)
-        return jsonify(ok=False, error="Please sign in again."), 401
-    if not _session_site_admin_user():
-        return jsonify(ok=False, error="Only site administrators can use this."), 403
+    denied = _admin_json_require_site_admin()
+    if denied is not None:
+        return denied
     payload = request.get_json(silent=True) or {}
     raw_ids = payload.get("meeting_group_ids")
     if raw_ids is None and payload.get("meeting_group_id") is not None:
@@ -7873,14 +7867,9 @@ def api_meeting_group_suggest_keywords():
 @bp.route("/admin/meeting-groups/apply-tag-suggestions", methods=["POST"])
 def admin_meeting_groups_apply_tag_suggestions():
     """Attach selected existing tags to event groups (JSON; site admins)."""
-    uid = session.get("user_id")
-    if not uid:
-        return jsonify(ok=False, error="Please sign in."), 401
-    if not User.query.get(uid):
-        session.pop("user_id", None)
-        return jsonify(ok=False, error="Please sign in again."), 401
-    if not _session_site_admin_user():
-        return jsonify(ok=False, error="Only site administrators can use this."), 403
+    denied = _admin_json_require_site_admin()
+    if denied is not None:
+        return denied
     payload = request.get_json(silent=True) or {}
     updates = payload.get("updates")
     if not isinstance(updates, list):
@@ -9416,85 +9405,30 @@ def admin_meeting_group_description(meeting_group_id: int):
 @site_admin_required
 def admin_meeting_groups_bulk_image():
     """Apply one uploaded banner image to every selected event group."""
-
-    def _bulk_img_log(step: str, **fields) -> None:
-        parts = [f"[TNW bulk-image] {step}"]
-        for key, val in fields.items():
-            parts.append(f"{key}={val!r}")
-        line = " | ".join(parts)
-        print(line, flush=True)
-        current_app.logger.warning(line)
-
-    _bulk_img_log(
-        "request",
-        method=request.method,
-        content_type=request.content_type,
-        content_length=request.content_length,
-        form_keys=list(request.form.keys()),
-        file_keys=list(request.files.keys()),
-    )
-
     ids = _admin_bulk_meeting_group_ids_from_form()
-    _bulk_img_log("parsed_ids", ids=ids, count=len(ids))
     if not ids:
-        _bulk_img_log("abort", reason="no_ids")
         return jsonify(ok=False, error="Select at least one event group."), 400
-
     img = request.files.get("image")
     if not img:
-        _bulk_img_log("abort", reason="no_image_file")
         return jsonify(ok=False, error="No image uploaded."), 400
 
-    _bulk_img_log(
-        "upload_file",
-        filename=getattr(img, "filename", None),
-        mimetype=getattr(img, "mimetype", None),
-        content_length=getattr(img, "content_length", None),
-    )
-
     groups = MeetingGroup.query.filter(MeetingGroup.meeting_group_id.in_(ids)).all()
-    found_ids = [int(g.meeting_group_id) for g in groups]
-    missing_ids = sorted(set(ids) - set(found_ids))
-    _bulk_img_log(
-        "db_lookup",
-        requested=len(ids),
-        found=len(groups),
-        found_ids=found_ids,
-        missing_ids=missing_ids,
-    )
     if not groups:
-        _bulk_img_log("abort", reason="no_matching_groups")
         return jsonify(ok=False, error="No matching event groups were found."), 404
 
     image_dir = _meeting_group_image_dir_abs()
-    dir_exists = os.path.isdir(image_dir)
-    dir_writable = os.access(image_dir, os.W_OK) if dir_exists else None
-    _bulk_img_log(
-        "image_dir",
-        path=image_dir,
-        exists=dir_exists,
-        writable=dir_writable,
-        cwd=os.getcwd(),
-        root_path=current_app.root_path,
-    )
-
     os.makedirs(image_dir, exist_ok=True)
     tmp_path = None
     try:
         with tempfile.NamedTemporaryFile(delete=False, suffix=".upload") as tmp:
             img.save(tmp.name)
             tmp_path = tmp.name
-        tmp_size = os.path.getsize(tmp_path) if tmp_path and os.path.isfile(tmp_path) else None
-        _bulk_img_log("temp_saved", path=tmp_path, size_bytes=tmp_size)
-
         try:
             probe_path = tmp_path + ".probe.png"
             _resize_meeting_group_image_from_path(tmp_path, probe_path)
             if os.path.isfile(probe_path):
                 os.remove(probe_path)
-            _bulk_img_log("probe_resize", ok=True)
-        except UnidentifiedImageError as exc:
-            _bulk_img_log("abort", reason="invalid_image", error=str(exc))
+        except UnidentifiedImageError:
             return jsonify(
                 ok=False, error="That file is not a valid image (JPG, PNG, or WEBP)."
             ), 400
@@ -9511,37 +9445,13 @@ def admin_meeting_groups_bulk_image():
                 out_fn = f"mg_{int(mg.user_id)}_{ts_base}_{int(mg.meeting_group_id)}.png"
                 target_path = os.path.join(image_dir, out_fn)
             if not target_path:
-                _bulk_img_log(
-                    "abort",
-                    reason="bad_target_path",
-                    meeting_group_id=int(mg.meeting_group_id),
-                    stored=stored,
-                )
                 return jsonify(
                     ok=False,
                     error=f"Could not resolve image path for group {mg.meeting_group_id}.",
                 ), 400
-
-            _bulk_img_log(
-                "apply_start",
-                meeting_group_id=int(mg.meeting_group_id),
-                stored=stored or None,
-                in_place=in_place,
-                out_fn=out_fn,
-                target_path=target_path,
-                target_exists_before=os.path.isfile(target_path),
-            )
             _resize_meeting_group_image_from_path(tmp_path, target_path)
-            written_size = os.path.getsize(target_path) if os.path.isfile(target_path) else None
             if not in_place:
                 mg.image_filename = out_fn
-            _bulk_img_log(
-                "apply_done",
-                meeting_group_id=int(mg.meeting_group_id),
-                out_fn=out_fn,
-                written_bytes=written_size,
-                db_filename=mg.image_filename,
-            )
             results.append(
                 {
                     "meeting_group_id": int(mg.meeting_group_id),
@@ -9551,22 +9461,18 @@ def admin_meeting_groups_bulk_image():
                     ),
                 }
             )
-
         db.session.commit()
-        _bulk_img_log("success", updated=len(results), results=results)
         return jsonify(ok=True, updated=len(results), results=results)
-    except Exception as exc:
+    except Exception:
         db.session.rollback()
-        _bulk_img_log("exception", type=type(exc).__name__, error=str(exc))
         current_app.logger.exception("admin_meeting_groups_bulk_image")
         return jsonify(ok=False, error="Could not apply the image."), 500
     finally:
         if tmp_path and os.path.isfile(tmp_path):
             try:
                 os.unlink(tmp_path)
-                _bulk_img_log("temp_removed", path=tmp_path)
-            except OSError as exc:
-                _bulk_img_log("temp_remove_failed", path=tmp_path, error=str(exc))
+            except OSError:
+                pass
 
 
 @bp.route("/admin/meeting-groups/bulk-details", methods=["POST"])

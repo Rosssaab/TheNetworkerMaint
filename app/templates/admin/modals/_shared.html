@@ -33,6 +33,8 @@
   </div>
   {% endif %}
 
+  {% include "admin/modals/_bulk_edit.html" %}
+
   <div class="modal fade" id="adminMgImageReplaceModal" tabindex="-1" aria-labelledby="adminMgImageReplaceModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
       <div class="modal-content tnw-modal-branded-shell {% if tnw_admin_bootstrap_light_shell %}bg-light text-dark border{% else %}bg-dark text-light border border-secondary{% endif %}">
