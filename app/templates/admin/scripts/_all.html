@@ -1853,6 +1853,76 @@
       window.tnwBustMgImageUrl = bustMgImageUrl;
       window.tnwRefreshOverviewGroupImage = refreshOverviewGroupImage;
 
+      (function wireAdminMgViewHoverPopouts() {
+        var grid = document.getElementById("adminOverviewGridWrap");
+        if (!grid) return;
+
+        function positionHovercard(wrap, card) {
+          var gap = 8;
+          var rect = wrap.getBoundingClientRect();
+          card.classList.add("admin-mg-view-hovercard--floating");
+          card.style.display = "block";
+          var cardW = card.offsetWidth || 224;
+          var cardH = card.offsetHeight || 160;
+          var left = rect.right - cardW;
+          var top = rect.top - cardH - gap;
+          if (top < gap) top = rect.bottom + gap;
+          if (left < gap) left = gap;
+          if (left + cardW > window.innerWidth - gap) {
+            left = Math.max(gap, window.innerWidth - cardW - gap);
+          }
+          if (top + cardH > window.innerHeight - gap) {
+            top = Math.max(gap, window.innerHeight - cardH - gap);
+          }
+          card.style.left = left + "px";
+          card.style.top = top + "px";
+        }
+
+        function clearHovercard(card) {
+          card.classList.remove("admin-mg-view-hovercard--floating");
+          card.style.left = "";
+          card.style.top = "";
+          card.style.display = "";
+        }
+
+        function hoverWrapFromEvent(ev) {
+          var t = ev.target;
+          return t && t.closest ? t.closest(".admin-mg-view-hover") : null;
+        }
+
+        grid.addEventListener("mouseover", function (ev) {
+          var wrap = hoverWrapFromEvent(ev);
+          if (!wrap || !grid.contains(wrap)) return;
+          var card = wrap.querySelector(".admin-mg-view-hovercard");
+          if (card) positionHovercard(wrap, card);
+        });
+
+        grid.addEventListener("mouseout", function (ev) {
+          var wrap = hoverWrapFromEvent(ev);
+          if (!wrap || !grid.contains(wrap)) return;
+          var related = ev.relatedTarget;
+          if (related && wrap.contains(related)) return;
+          var card = wrap.querySelector(".admin-mg-view-hovercard");
+          if (card) clearHovercard(card);
+        });
+
+        grid.addEventListener("focusin", function (ev) {
+          var wrap = hoverWrapFromEvent(ev);
+          if (!wrap || !grid.contains(wrap)) return;
+          var card = wrap.querySelector(".admin-mg-view-hovercard");
+          if (card) positionHovercard(wrap, card);
+        });
+
+        grid.addEventListener("focusout", function (ev) {
+          var wrap = hoverWrapFromEvent(ev);
+          if (!wrap || !grid.contains(wrap)) return;
+          var related = ev.relatedTarget;
+          if (related && wrap.contains(related)) return;
+          var card = wrap.querySelector(".admin-mg-view-hovercard");
+          if (card) clearHovercard(card);
+        });
+      })();
+
       (function initAdminBulkEditToolbar() {
         var BULK_IMAGE_URL = {{ url_for('main.admin_meeting_groups_bulk_image') | tojson }};
         var BULK_DETAILS_URL = {{ url_for('main.admin_meeting_groups_bulk_details') | tojson }};
@@ -1942,6 +2012,20 @@
           if (bulkImagesHint) bulkImagesHint.textContent = "Ready to apply to all selected groups.";
         }
 
+        function stageBulkImageWithCrop(file) {
+          if (!file) return;
+          if (typeof window.tnwOpenSquareImageCrop === "function") {
+            window.tnwOpenSquareImageCrop(file, {
+              dialogTitle: "Crop group image",
+              messageTitle: "Change images",
+              defaultFileNameBase: "group-image",
+              onCroppedFile: stageBulkImage,
+            });
+            return;
+          }
+          stageBulkImage(file);
+        }
+
         var bulkImagesOpen = document.getElementById("adminBulkImagesOpen");
         if (bulkImagesOpen && bulkImagesModal) {
           bulkImagesOpen.addEventListener("click", function () {
@@ -1955,7 +2039,7 @@
         if (bulkImagesPick && bulkImagesFile) {
           bulkImagesPick.addEventListener("click", function () { bulkImagesFile.click(); });
           bulkImagesFile.addEventListener("change", function () {
-            if (bulkImagesFile.files && bulkImagesFile.files[0]) stageBulkImage(bulkImagesFile.files[0]);
+            if (bulkImagesFile.files && bulkImagesFile.files[0]) stageBulkImageWithCrop(bulkImagesFile.files[0]);
             bulkImagesFile.value = "";
           });
         }
@@ -1966,7 +2050,7 @@
             ev.preventDefault();
             bulkImagesDrop.classList.remove("is-dragover");
             var f = ev.dataTransfer && ev.dataTransfer.files && ev.dataTransfer.files[0];
-            if (f) stageBulkImage(f);
+            if (f) stageBulkImageWithCrop(f);
           });
         }
         if (bulkImagesModalEl) {
@@ -1977,7 +2061,7 @@
               var it = cd.items[i];
               if (it.type && it.type.indexOf("image/") === 0) {
                 var f = it.getAsFile();
-                if (f) { ev.preventDefault(); stageBulkImage(f); break; }
+                if (f) { ev.preventDefault(); stageBulkImageWithCrop(f); break; }
               }
             }
           });

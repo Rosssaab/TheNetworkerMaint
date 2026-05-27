@@ -9,7 +9,7 @@
 
 {% block extra_head %}
 <link href="{{ url_for('main.admin_maint_static', filename='css/admin_console.css') }}" rel="stylesheet">
-<link href="{{ url_for('static', filename='css/tnw-square-image-crop.css') }}" rel="stylesheet">
+<link href="{{ url_for('main.admin_maint_static', filename='css/tnw-square-image-crop.css') }}" rel="stylesheet">
 {% block admin_extra_head %}{% endblock %}
 {% endblock %}
 
@@ -81,7 +81,7 @@
   });
 </script>
 <script src="{{ url_for('static', filename='js/tnw-rich-text-wizard.js') }}"></script>
-<script src="{{ url_for('static', filename='js/tnw-square-image-crop.js') }}"></script>
-<script src="{{ url_for('static', filename='js/tnw-square-image-crop-helper.js') }}"></script>
+<script src="{{ url_for('main.admin_maint_static', filename='js/tnw-square-image-crop.js') }}"></script>
+<script src="{{ url_for('main.admin_maint_static', filename='js/tnw-square-image-crop-helper.js') }}"></script>
 {% block admin_extra_scripts %}{% endblock %}
 {% endblock %}
